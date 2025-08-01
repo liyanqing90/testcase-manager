@@ -1,0 +1,37 @@
+@import './base.css';
+
+#app {
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: hsla(160, 100%, 37%, 1);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: hsla(160, 100%, 37%, 0.2);
+  }
+}
+
+/* 移除导致内容居中的样式 */
+@media (min-width: 1024px) {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  #app {
+    padding: 0;
+    margin: 0;
+  }
+}
