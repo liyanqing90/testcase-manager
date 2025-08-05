@@ -3,5 +3,5 @@ class Config:
     MYSQL_PORT = 3306
     MYSQL_USER = ''
     MYSQL_PASSWORD = ''
-    MYSQL_DB = ''
-    MYSQL_CURSORCLASS = '' 
+    MYSQL_DB = 'testcase_manager'
+    MYSQL_CURSORCLASS = 'DictCursor'
