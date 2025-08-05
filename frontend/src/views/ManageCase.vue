@@ -212,7 +212,6 @@
                 class="testcase-table"
                 :row-class-name="tableRowClassName"
                 @row-click="handleRowClick"
-                empty-text=""
               >
                 <el-table-column prop="case_id" label="用例ID" width="140" class-name="case-id-column">
                   <template #default="scope">

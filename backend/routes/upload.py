@@ -176,8 +176,11 @@ def import_case():
             # 获取插入的测试用例ID
             test_case_id = cur.lastrowid
             
-            # 注意：项目ID已经直接插入到test_cases表中，不需要额外的project_cases关联
-            # 如果需要维护project_cases表，可以在这里添加插入逻辑
+            # 同时在project_cases表中创建关联记录
+            cur.execute(
+                "INSERT INTO project_cases (project_id, test_case_id) VALUES (%s, %s)",
+                (project_id, test_case_id)
+            )
             
             imported.append(case_id)
         except Exception as e:
