@@ -112,7 +112,7 @@
             <transition name="duplicate-status" mode="out-in">
               <el-tag 
                 v-if="scope.row.duplicate" 
-                :key="'duplicate-' + scope.row.ID"
+                :key="'duplicate-' + scope.row.ID + '-' + scope.row.duplicate_reason"
                 type="danger" 
                 class="deep-danger-tag duplicate-status-tag" 
                 style="white-space: normal;"
@@ -361,7 +361,20 @@ export default {
     onNewIdBlur(row) {
       // 输入框失焦时检查新ID是否重复
       if (row.new_ID && this.selectedProject) {
-        this.checkNewIdDuplicate(row);
+        // 先检查是否与其他正在编辑的新ID重复
+        const duplicateNewId = this.cases.some(caseItem => {
+          // 排除自己这一行，检查其他行是否有相同的新ID
+          return caseItem !== row && caseItem.new_ID === row.new_ID;
+        });
+        
+        if (duplicateNewId) {
+          // 与其他正在编辑的新ID重复
+          row.duplicate = true;
+          row.duplicate_reason = '新ID重复';
+        } else {
+          // 检查数据库中是否重复
+          this.checkNewIdDuplicate(row);
+        }
       }
     },
     
