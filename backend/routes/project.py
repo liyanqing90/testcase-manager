@@ -111,6 +111,7 @@ def get_project_testcases(project_id):
             FROM test_cases tc
             JOIN project_cases pc ON tc.id = pc.test_case_id
             WHERE pc.project_id = %s
+            order by pc.id
         """, (project_id,))
         testcases = cur.fetchall()
         cur.close()
