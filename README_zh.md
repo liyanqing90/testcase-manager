@@ -93,7 +93,7 @@ CREATE TABLE projects (
 ```sql
 CREATE TABLE test_cases (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    case_id VARCHAR(64) NOT NULL UNIQUE,
+    case_id VARCHAR(64) NOT NULL,
     title VARCHAR(255),
     description TEXT,
     preconditions TEXT,
@@ -105,8 +105,13 @@ CREATE TABLE test_cases (
     created_at DATETIME,
     updated_at DATETIME,
     created_by VARCHAR(100),
-    last_updated_by VARCHAR(100)
+    last_updated_by VARCHAR(100),
+    project_id INT,
+    FOREIGN KEY (project_id) REFERENCES projects(id)
 );
+
+-- 添加项目内唯一约束，确保同一项目内case_id唯一
+ALTER TABLE test_cases ADD UNIQUE INDEX unique_case_id_per_project (project_id, case_id);
 ```
 
 #### project_cases 表 (项目用例关联表)

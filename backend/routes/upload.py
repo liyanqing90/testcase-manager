@@ -103,7 +103,9 @@ def upload_case():
     case_ids = [c.get('ID') for c in cases if c.get('ID')]
     if case_ids:
         format_strings = ','.join(['%s'] * len(case_ids))
-        cur.execute(f"SELECT case_id FROM test_cases WHERE case_id IN ({format_strings})", tuple(case_ids))
+        # 修改查询逻辑，只检查当前项目中的重复用例，而不是整个数据库
+        cur.execute(f"SELECT case_id FROM test_cases WHERE case_id IN ({format_strings}) AND project_id = %s", 
+                   tuple(case_ids + [project_id]))
         existing = set(row['case_id'] for row in cur.fetchall())
         # 更新重复标记，添加数据库重复的信息
         for case in cases:
@@ -188,20 +190,20 @@ def import_case():
             error_msg = str(e)
             
             # 检查是否是重复键错误
-            if "Duplicate entry" in error_msg and "case_id" in error_msg:
+            if "Duplicate entry" in error_msg and "unique_case_id_per_project" in error_msg:
                 # 提取重复的case_id
                 import re
-                match = re.search(r"Duplicate entry '([^']+)' for key 'case_id'", error_msg)
+                match = re.search(r"Duplicate entry '[^']+-([^']+)' for key 'unique_case_id_per_project'", error_msg)
                 if match:
                     duplicate_case_id = match.group(1)
                     return jsonify({
-                        'error': f'用例ID "{duplicate_case_id}" 已存在，请使用不同的ID',
+                        'error': f'用例ID "{duplicate_case_id}" 在当前项目中已存在，请使用不同的ID',
                         'failed_case': duplicate_case_id,
                         'error_type': 'duplicate_case_id'
                     }), 400
                 else:
                     return jsonify({
-                        'error': '用例ID已存在，请使用不同的ID',
+                        'error': '用例ID在当前项目中已存在，请使用不同的ID',
                         'failed_case': case_id,
                         'error_type': 'duplicate_case_id'
                     }), 400

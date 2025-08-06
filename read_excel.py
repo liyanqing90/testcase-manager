@@ -11,7 +11,8 @@ print(df.head())
 print("\n列名:")
 print(df.columns.tolist())
 
-# 检查是否有重复的ID
+# 检查是否有重复的ID（文件内重复检查）
+# 注意：系统支持在不同项目中使用相同的用例ID，但在同一项目内用例ID必须唯一
 if 'ID' in df.columns:
     print("\nID列的值:")
     print(df['ID'].tolist())

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS projects (
 -- 创建 test_cases 表
 CREATE TABLE IF NOT EXISTS test_cases (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    case_id VARCHAR(64) NOT NULL UNIQUE,
+    case_id VARCHAR(64) NOT NULL,
     title VARCHAR(255),
     description TEXT,
     preconditions TEXT,
@@ -25,6 +25,10 @@ CREATE TABLE IF NOT EXISTS test_cases (
     project_id INT,
     FOREIGN KEY (project_id) REFERENCES projects(id)
 );
+
+-- 添加项目内唯一约束，确保同一项目内case_id唯一
+ALTER TABLE test_cases ADD UNIQUE INDEX unique_case_id_per_project (project_id, case_id);
+
 -- 创建 project_cases 表
 CREATE TABLE IF NOT EXISTS project_cases (
     id INT AUTO_INCREMENT PRIMARY KEY,
