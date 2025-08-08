@@ -236,11 +236,11 @@ function getStatusDisplay(status) {
 </script>
 
 <style scoped>
-.case-compare-dialog >>> .el-dialog__body {
+:deep(.case-compare-dialog .el-dialog__body) {
   padding: 24px 20px 12px 20px;
   background: #d1d5db !important;
 }
-.case-compare-dialog >>> .el-dialog {
+:deep(.case-compare-dialog .el-dialog) {
   background: #d1d5db !important;
 }
 .detail-dialog-header {

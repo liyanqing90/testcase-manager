@@ -3,6 +3,7 @@ import { ref, provide, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import UploadCase from './views/UploadCase.vue';
 import ManageCase from './views/ManageCase.vue';
+import AiGenerateCase from './views/AiGenerateCase.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -21,6 +22,9 @@ const tab = computed(() => {
   const path = route.path;
   if (path === '/upload') {
     return 'upload';
+  }
+  if (path === '/ai-generate') {
+    return 'ai-generate';
   }
   return 'manage'; // 默认为manage，包括 /manage 和 /
 });
@@ -45,9 +49,10 @@ const handleSidebarDisabled = (disabled) => {
 // 处理tab选择
 const handleTabSelect = (selectedTab) => {
   if (!sidebarDisabled.value) {
-    // 根据选择的tab进行路由跳转
     if (selectedTab === 'upload') {
       router.push('/upload');
+    } else if (selectedTab === 'ai-generate') {
+      router.push('/ai-generate');
     } else {
       router.push('/manage');
     }
@@ -72,7 +77,7 @@ watch(() => route.path, (newPath) => {
             <img src="/src/icon/边牧.png" alt="Logo" />
           </div>
           <div class="logo-text" v-show="!sidebarCollapsed">
-            <h1>用例管理</h1>
+            <h1>AIsystem</h1>
             <p>Case Manager</p>
           </div>
         </div>
@@ -110,6 +115,21 @@ watch(() => route.path, (newPath) => {
               <span v-show="!sidebarCollapsed">用例上传</span>
             </div>
           </el-menu-item>
+
+          <el-menu-item index="ai-generate" class="menu-item">
+            <div class="menu-item-content">
+              <div class="menu-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="4" y="8" width="16" height="10" rx="4" stroke="currentColor" stroke-width="2"/>
+                  <rect x="9" y="2" width="6" height="4" rx="2" stroke="currentColor" stroke-width="2"/>
+                  <circle cx="8.5" cy="13.5" r="1.5" fill="currentColor"/>
+                  <circle cx="15.5" cy="13.5" r="1.5" fill="currentColor"/>
+                  <path d="M12 18v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <span v-show="!sidebarCollapsed">AI生成用例</span>
+            </div>
+          </el-menu-item>
       </el-menu>
       </div>
 
@@ -143,7 +163,7 @@ watch(() => route.path, (newPath) => {
                 <span class="breadcrumb-separator">/</span>
                 <transition name="fade" mode="out-in">
                   <span class="breadcrumb-item active" :key="tab">
-                    {{ tab==='upload' ? '用例上传' : '项目用例管理' }}
+                    {{ tab==='upload' ? '用例上传' : tab==='ai-generate' ? 'AI生成用例' : '项目用例管理' }}
                   </span>
                 </transition>
               </div>
@@ -153,6 +173,7 @@ watch(() => route.path, (newPath) => {
       
       <el-main class="main-content">
         <UploadCase v-if="tab==='upload'" />
+        <AiGenerateCase v-else-if="tab==='ai-generate'" />
         <ManageCase v-else @project-deleted="handleProjectDeleted" @sidebar-disabled="handleSidebarDisabled" />
       </el-main>
     </el-container>
@@ -198,14 +219,10 @@ watch(() => route.path, (newPath) => {
 .logo-icon {
   width: 56px;
   height: 56px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .logo-icon svg {

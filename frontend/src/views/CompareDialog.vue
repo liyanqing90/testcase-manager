@@ -58,7 +58,7 @@ const emit = defineEmits(['update:visible', 'keep']);
 </script>
 
 <style scoped>
-.compare-dialog >>> .el-dialog__body {
+:deep(.compare-dialog .el-dialog__body) {
   padding: 24px 20px 12px 20px;
 }
 .compare-table-wrapper {

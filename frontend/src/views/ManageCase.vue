@@ -1187,6 +1187,7 @@ export default {
 :deep(.el-loading-mask) {
   background-color: rgba(255, 255, 255, 0.9) !important;
   backdrop-filter: blur(4px);
+  border-radius: 16px; /* 新增圆角样式 */
 }
 
 :deep(.el-loading-spinner) {

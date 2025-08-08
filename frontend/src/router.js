@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import ManageCase from './views/ManageCase.vue';
 import UploadCase from './views/UploadCase.vue';
+import AiGenerateCase from './views/AiGenerateCase.vue';
 
 const routes = [
   {
@@ -16,6 +17,11 @@ const routes = [
     path: '/upload',
     name: 'UploadCase',
     component: UploadCase
+  },
+  {
+    path: '/ai-generate',
+    name: 'AiGenerateCase',
+    component: AiGenerateCase
   }
 ];
 
