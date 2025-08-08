@@ -55,7 +55,10 @@
       <el-card class="ai-generate-card ai-generate-download-card" shadow="hover">
         <div class="ai-generate-card-title">用例下载</div>
         <div v-if="downloadReady">
-          <el-button type="primary" @click="handleDownload">下载生成的测试用例文件</el-button>
+          <el-button type="primary" @click="handleDownload" class="download-btn">
+            <el-icon style="margin-right:8px;"><download /></el-icon>
+            下载生成的测试用例文件
+          </el-button>
         </div>
         <div v-else class="ai-generate-download-tip">生成成功后可在此处下载测试用例Excel文件</div>
       </el-card>
@@ -164,34 +167,39 @@
     </div>
   </div>
 
-  <!-- 自定义成功弹窗 -->
+  <!-- 成功弹窗 -->
   <el-dialog
-    v-model="successDialogVisible"
+    v-model="showSuccessDialog"
+    title=""
     width="400px"
     :show-close="false"
     :close-on-click-modal="false"
     :close-on-press-escape="false"
     class="success-dialog"
   >
-    <div class="success-dialog-content">
+    <div class="success-content">
       <div class="success-icon">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </div>
       <h3 class="success-title">生成成功</h3>
-      <p class="success-message">测试用例生成成功！请在下方下载生成的Excel文件。</p>
-      <el-button type="primary" @click="successDialogVisible = false" class="success-btn">
-        确定
-      </el-button>
+      <p class="success-message">测试用例已生成完成，请前往用例下载区域下载文件</p>
     </div>
+    <template #footer>
+      <div class="success-footer">
+        <el-button type="primary" @click="closeSuccessDialog" class="success-btn">
+          确定
+        </el-button>
+      </div>
+    </template>
   </el-dialog>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled, InfoFilled, Document } from '@element-plus/icons-vue'
+import { UploadFilled, InfoFilled, Document, Download } from '@element-plus/icons-vue'
 
 const fileName = ref('')
 const fileObj = ref(null)
@@ -200,7 +208,7 @@ const concurrency = ref(1)
 const caseType = ref('functional')
 const loading = ref(false)
 const downloadReady = ref(false)
-const successDialogVisible = ref(false) // 新增：成功弹窗的v-model
+const showSuccessDialog = ref(false)
 
 const shortFileName = computed(() => {
   if (!fileName.value) return ''
@@ -237,8 +245,8 @@ async function handleGenerate() {
   try {
     // 这里模拟生成过程，后续对接后端
     await new Promise(resolve => setTimeout(resolve, 1500))
-    successDialogVisible.value = true
     downloadReady.value = true
+    showSuccessDialog.value = true
     // resetForm() // 生成后不立即重置，等下载后再重置
   } catch (e) {
     ElMessage.error('生成失败，请重试！')
@@ -253,6 +261,12 @@ function handleDownload() {
   // 下载后重置表单和下载区
   resetForm()
   downloadReady.value = false
+}
+
+function closeSuccessDialog() {
+  showSuccessDialog.value = false
+  // 下载成功后，可以在这里添加跳转到下载区域的逻辑
+  // ElMessage.success('已跳转到下载区域')
 }
 
 function getPriorityType(priority) {
@@ -637,77 +651,127 @@ function getPriorityType(priority) {
 }
 
 /* 成功弹窗样式 */
-.success-dialog {
-  border-radius: 16px;
+.success-dialog .el-dialog__header {
+  display: none;
 }
 
-.success-dialog :deep(.el-dialog) {
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}
-
-.success-dialog :deep(.el-dialog__body) {
-  padding: 0;
-}
-
-.success-dialog-content {
-  padding: 40px 32px;
+.success-dialog .el-dialog__body {
+  padding: 40px 30px;
   text-align: center;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
 }
 
-.success-icon {
+.success-dialog .el-dialog {
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  border: none;
+}
+
+.success-dialog .success-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.success-dialog .success-icon {
   width: 80px;
   height: 80px;
-  margin: 0 auto 24px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  color: #67c23a;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, rgba(103, 194, 58, 0.1), rgba(103, 194, 58, 0.05));
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+  animation: successPulse 0.6s ease-out;
 }
 
-.success-icon svg {
+@keyframes successPulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.success-dialog .success-icon svg {
   width: 40px;
   height: 40px;
-  stroke-width: 2.5;
 }
 
-.success-title {
-  margin: 0 0 16px 0;
+.success-dialog .success-title {
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
+  color: #333;
+  margin-bottom: 12px;
   font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
 }
 
-.success-message {
-  margin: 0 0 32px 0;
+.success-dialog .success-message {
   font-size: 16px;
-  color: #6b7280;
+  color: #666;
   line-height: 1.6;
+  margin-bottom: 30px;
   font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
 }
 
-.success-btn {
-  padding: 12px 32px;
+.success-dialog .success-footer {
+  text-align: center;
+}
+
+.success-dialog .success-btn {
+  width: 140px;
+  height: 44px;
   font-size: 16px;
   font-weight: 600;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  border-radius: 22px;
+  background: #67c23a;
   border: none;
-  color: white;
+  box-shadow: 0 2px 8px rgba(103, 194, 58, 0.2);
   transition: all 0.3s ease;
+  color: white;
 }
 
-.success-btn:hover {
-  background: linear-gradient(135deg, #059669, #047857);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+.success-dialog .success-btn:hover {
+  background: #529b2e;
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
 }
+
+.download-btn {
+  background: linear-gradient(135deg, #409EFF, #337ecc);
+  border-color: #409EFF;
+  color: #fff;
+  font-weight: 600;
+  padding: 0 32px;
+  border-radius: 24px;
+  height: 48px;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  transition: all 0.3s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.download-btn:hover {
+  background: linear-gradient(135deg, #66b1ff, #409EFF);
+  border-color: #66b1ff;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
+}
+
+.download-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
+}
+
 @media (max-width: 1700px) {
   .ai-generate-case-root {
     max-width: 100vw;
