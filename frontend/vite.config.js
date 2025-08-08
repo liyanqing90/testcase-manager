@@ -15,7 +15,8 @@ export default defineConfig({
       '/upload_case': 'http://localhost:5000',
       '/import_case': 'http://localhost:5000',
       '/project': 'http://localhost:5000',
-      '/test_case': 'http://localhost:5000'
+      '/test_case': 'http://localhost:5000',
+      '/ai_generate': 'http://localhost:5000'
     }
   },
   resolve: {

@@ -30,6 +30,11 @@ A modern test case management system built with Flask and Vue 3, supporting Exce
 - Flask-MySQLdb: MySQL database connection
 - openpyxl: Excel file processing
 - Werkzeug: File upload handling
+- AutoGen: AI agent framework
+- OpenAI: AI model integration
+- Browser-use: Web automation
+- Playwright: Browser automation
+- Document processing: python-docx, PyPDF2, markdown
 
 ### Frontend
 - Vue 3: Progressive JavaScript framework
@@ -40,6 +45,29 @@ A modern test case management system built with Flask and Vue 3, supporting Exce
 
 ### Database
 - MySQL 5.7+: Relational database
+
+## Environment Requirements
+
+### System Requirements
+- Python 3.8 or higher
+- Node.js 20.19+ or 22.12+
+- MySQL 5.7 or higher
+- Git
+
+### Python Dependencies
+The project uses the following key Python packages:
+- **Web Framework**: Flask, Flask-CORS, Flask-MySQLdb
+- **AI & Automation**: autogen, openai, browser_use, playwright
+- **Document Processing**: python-docx, PyPDF2, markdown, pandas, openpyxl
+- **Development Tools**: pytest, black, isort, flake8
+- **Utilities**: python-dotenv, pydantic, asyncio, tenacity
+
+### Node.js Dependencies
+The frontend uses the following key packages:
+- **Framework**: Vue 3, Vue Router
+- **UI Library**: Element Plus
+- **Build Tool**: Vite
+- **HTTP Client**: Axios
 
 ## Project Structure
 
@@ -54,7 +82,16 @@ JoinTestCase/
 │   │   ├── __init__.py
 │   │   ├── project.py     # Project management routes
 │   │   ├── test_case.py   # Test case routes
-│   │   └── upload.py      # File upload routes
+│   │   ├── upload.py      # File upload routes
+│   │   └── ai_generate.py # AI test case generation routes
+│   ├── ai_test_cases/      # AI testing system
+│   │   ├── src/           # AI system source code
+│   │   │   ├── agents/    # AI agents
+│   │   │   ├── services/  # AI services
+│   │   │   ├── templates/ # Test case templates
+│   │   │   └── utils/     # AI utilities
+│   │   ├── docs/          # Document storage
+│   │   └── requirements.txt # AI system dependencies
 │   └── uploads/           # Uploaded file storage directory
 ├── frontend/              # Frontend code
 │   ├── src/
@@ -64,13 +101,15 @@ JoinTestCase/
 │   │   ├── components/    # Vue components
 │   │   ├── views/         # Page components
 │   │   │   ├── ManageCase.vue    # Project management page
-│   │   │   └── UploadCase.vue    # Test case upload page
+│   │   │   ├── UploadCase.vue    # Test case upload page
+│   │   │   └── AiGenerateCase.vue # AI test case generation page
 │   │   ├── App.vue        # Root component
 │   │   ├── main.js        # Application entry point
 │   │   └── router.js      # Routing configuration
 │   ├── index.html         # HTML template
 │   ├── package.json       # Dependency configuration
 │   └── vite.config.js     # Vite configuration
+├── requirements.txt        # Python dependencies (root level)
 ├── config.py              # Database configuration
 ├── db_init.sql           # Database initialization script
 ├── read_excel.py         # Excel reading tool
@@ -144,7 +183,11 @@ cd JoinTestCase
 
 #### Install Python Dependencies
 ```bash
-pip install flask flask-cors flask-mysqldb openpyxl werkzeug
+# Install all Python dependencies from requirements.txt
+pip install -r requirements.txt
+
+# Or install core dependencies manually
+pip install flask flask-cors flask-mysqldb openpyxl werkzeug python-dotenv autogen openai asyncio pydantic fastapi uvicorn browser_use playwright python-docx PyPDF2 markdown pandas python-multipart aiofiles typing tenacity numpy matplotlib pytest pytest-asyncio pytest-cov black isort flake8
 ```
 
 #### Database Configuration

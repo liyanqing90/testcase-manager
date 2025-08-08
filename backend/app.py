@@ -18,9 +18,11 @@ def create_app():
     from routes.test_case import test_case_bp
     from routes.project import project_bp
     from routes.upload import upload_bp
+    from routes.ai_generate import ai_generate_bp
     app.register_blueprint(test_case_bp, url_prefix='/test_case')
     app.register_blueprint(project_bp, url_prefix='/project')
     app.register_blueprint(upload_bp)
+    app.register_blueprint(ai_generate_bp, url_prefix='/ai_generate')
 
     @app.route('/health')
     def health():

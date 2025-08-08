@@ -46,7 +46,7 @@
         </el-form>
         <div class="ai-generate-form-btn-outer">
           <el-button type="success" class="ai-generate-upload-btn" :loading="loading" :disabled="!fileObj || loading" @click="handleGenerate">
-            <el-icon style="margin-right:6px;"><document /></el-icon>
+            <el-icon style="margin-right:6px;" v-if="!loading"><document /></el-icon>
             生成用例
           </el-button>
         </div>
@@ -218,6 +218,9 @@ const shortFileName = computed(() => {
 })
 
 function beforeUpload(file) {
+  // 如果上传新文件，重置表单状态
+  resetForm()
+  
   fileName.value = file.name
   fileObj.value = file
   // 阻止自动上传，后续逻辑后面实现
@@ -230,6 +233,7 @@ function resetForm() {
   outputFile.value = 'test_cases.xlsx'
   concurrency.value = 1
   caseType.value = 'functional'
+  downloadReady.value = false  // 同时重置下载区域状态
 }
 
 async function handleGenerate() {
@@ -241,26 +245,86 @@ async function handleGenerate() {
     ElMessage.warning('请填写输出文件名！')
     return
   }
+  
+  // 显示生成开始提示
+  ElMessageBox.alert(
+    'AI正在分析需求文档并生成测试用例，此过程可能需要5-15分钟，请耐心等待，期间请勿进行其他操作',
+    '生成开始',
+    {
+      confirmButtonText: '我知道了',
+      type: 'info',
+      center: true,
+      customClass: 'generate-start-dialog'
+    }
+  )
+  
   loading.value = true
   try {
-    // 这里模拟生成过程，后续对接后端
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    // 1. 上传文件
+    const formData = new FormData()
+    formData.append('file', fileObj.value)
+    
+    const uploadResponse = await fetch('/ai_generate/upload', {
+      method: 'POST',
+      body: formData
+    })
+    
+    if (!uploadResponse.ok) {
+      const errorData = await uploadResponse.json()
+      throw new Error(errorData.error || '文件上传失败')
+    }
+    
+    const uploadResult = await uploadResponse.json()
+    
+    // 2. 生成测试用例
+    const generateResponse = await fetch('/ai_generate/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        filename: uploadResult.filename,
+        output_filename: outputFile.value,
+        test_type: caseType.value,
+        concurrency: concurrency.value
+      })
+    })
+    
+    if (!generateResponse.ok) {
+      const errorData = await generateResponse.json()
+      throw new Error(errorData.error || '测试用例生成失败')
+    }
+    
+    const generateResult = await generateResponse.json()
+    
+    if (generateResult.success) {
     downloadReady.value = true
-    showSuccessDialog.value = true
-    // resetForm() // 生成后不立即重置，等下载后再重置
+      showSuccessDialog.value = true
+      ElMessage.success('测试用例生成成功！')
+    } else {
+      throw new Error(generateResult.error || '生成失败')
+    }
+    
   } catch (e) {
-    ElMessage.error('生成失败，请重试！')
+    ElMessage.error('生成失败：' + e.message)
   } finally {
     loading.value = false
   }
 }
 
 function handleDownload() {
-  // 模拟下载，后续对接后端真实文件
-  ElMessage.success('已开始下载（模拟，后续对接后端实现）')
-  // 下载后重置表单和下载区
-  resetForm()
-  downloadReady.value = false
+  // 下载生成的测试用例文件
+  const downloadUrl = `/ai_generate/download/${outputFile.value}`
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = outputFile.value
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  
+  ElMessage.success('开始下载测试用例文件')
+  
+  // 下载后不清空表单和下载区，保持状态以便重复下载
 }
 
 function closeSuccessDialog() {

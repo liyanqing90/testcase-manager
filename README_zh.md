@@ -28,6 +28,11 @@
 - Flask-MySQLdb: MySQL数据库连接
 - openpyxl: Excel文件处理
 - Werkzeug: 文件上传处理
+- AutoGen: AI代理框架
+- OpenAI: AI模型集成
+- Browser-use: Web自动化
+- Playwright: 浏览器自动化
+- 文档处理: python-docx, PyPDF2, markdown
 
 ### 前端
 - Vue 3: 渐进式JavaScript框架
@@ -38,6 +43,29 @@
 
 ### 数据库
 - MySQL 5.7+: 关系型数据库
+
+## 环境要求
+
+### 系统要求
+- Python 3.8 或更高版本
+- Node.js 20.19+ 或 22.12+
+- MySQL 5.7 或更高版本
+- Git
+
+### Python依赖
+项目使用以下关键Python包：
+- **Web框架**: Flask, Flask-CORS, Flask-MySQLdb
+- **AI与自动化**: autogen, openai, browser_use, playwright
+- **文档处理**: python-docx, PyPDF2, markdown, pandas, openpyxl
+- **开发工具**: pytest, black, isort, flake8
+- **工具库**: python-dotenv, pydantic, asyncio, tenacity
+
+### Node.js依赖
+前端使用以下关键包：
+- **框架**: Vue 3, Vue Router
+- **UI库**: Element Plus
+- **构建工具**: Vite
+- **HTTP客户端**: Axios
 
 ## 项目结构
 
@@ -52,7 +80,16 @@ JoinTestCase/
 │   │   ├── __init__.py
 │   │   ├── project.py     # 项目管理路由
 │   │   ├── test_case.py   # 测试用例路由
-│   │   └── upload.py      # 文件上传路由
+│   │   ├── upload.py      # 文件上传路由
+│   │   └── ai_generate.py # AI测试用例生成路由
+│   ├── ai_test_cases/      # AI测试系统
+│   │   ├── src/           # AI系统源代码
+│   │   │   ├── agents/    # AI代理
+│   │   │   ├── services/  # AI服务
+│   │   │   ├── templates/ # 测试用例模板
+│   │   │   └── utils/     # AI工具
+│   │   ├── docs/          # 文档存储
+│   │   └── requirements.txt # AI系统依赖
 │   └── uploads/           # 上传文件存储目录
 ├── frontend/              # 前端代码
 │   ├── src/
@@ -62,13 +99,15 @@ JoinTestCase/
 │   │   ├── components/    # Vue组件
 │   │   ├── views/         # 页面组件
 │   │   │   ├── ManageCase.vue    # 项目管理页面
-│   │   │   └── UploadCase.vue    # 用例上传页面
+│   │   │   ├── UploadCase.vue    # 用例上传页面
+│   │   │   └── AiGenerateCase.vue # AI测试用例生成页面
 │   │   ├── App.vue        # 根组件
 │   │   ├── main.js        # 应用入口
 │   │   └── router.js      # 路由配置
 │   ├── index.html         # HTML模板
 │   ├── package.json       # 依赖配置
 │   └── vite.config.js     # Vite配置
+├── requirements.txt        # Python依赖（根目录）
 ├── config.py              # 数据库配置
 ├── db_init.sql           # 数据库初始化脚本
 ├── read_excel.py         # Excel读取工具
@@ -142,7 +181,11 @@ cd JoinTestCase
 
 #### 安装Python依赖
 ```bash
-pip install flask flask-cors flask-mysqldb openpyxl werkzeug
+# 从requirements.txt安装所有Python依赖
+pip install -r requirements.txt
+
+# 或手动安装核心依赖
+pip install flask flask-cors flask-mysqldb openpyxl werkzeug python-dotenv autogen openai asyncio pydantic fastapi uvicorn browser_use playwright python-docx PyPDF2 markdown pandas python-multipart aiofiles typing tenacity numpy matplotlib pytest pytest-asyncio pytest-cov black isort flake8
 ```
 
 #### 配置数据库
