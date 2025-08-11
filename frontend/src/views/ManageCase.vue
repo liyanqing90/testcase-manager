@@ -297,7 +297,7 @@
             </div>
           </template>
           <div class="dialog-content-wrapper">
-            <el-form label-width="120px" v-if="currentTestCase">
+          <el-form label-width="120px" v-if="currentTestCase">
             <el-form-item label="基本信息:">
               <div class="form-item-content">
                 <div class="basic-info-row">

@@ -54,13 +54,10 @@
       <!-- 下载区卡片 -->
       <el-card class="ai-generate-card ai-generate-download-card" shadow="hover">
         <div class="ai-generate-card-title">用例下载</div>
-        <div v-if="downloadReady">
-          <el-button type="primary" @click="handleDownload" class="download-btn">
-            <el-icon style="margin-right:8px;"><download /></el-icon>
-            下载生成的测试用例文件
-          </el-button>
+        <div class="ai-generate-download-tip">生成成功后可在下载中心下载测试用例文件</div>
+        <div class="ai-generate-download-center-btn">
+          <el-button class="ai-generate-upload-btn" @click="openDownloadCenter">打开下载中心</el-button>
         </div>
-        <div v-else class="ai-generate-download-tip">生成成功后可在此处下载测试用例Excel文件</div>
       </el-card>
     </div>
     <!-- 生成用例总结部分 -->
@@ -167,39 +164,42 @@
     </div>
   </div>
 
-  <!-- 成功弹窗 -->
+  <!-- 成功弹窗已移除 -->
+
+  <!-- 下载中心弹窗 -->
   <el-dialog
-    v-model="showSuccessDialog"
-    title=""
-    width="400px"
-    :show-close="false"
+    v-model="downloadCenterVisible"
+    title="下载中心"
+    width="720px"
+    class="download-center-dialog"
     :close-on-click-modal="false"
-    :close-on-press-escape="false"
-    class="success-dialog"
   >
-    <div class="success-content">
-      <div class="success-icon">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <h3 class="success-title">生成成功</h3>
-      <p class="success-message">测试用例已生成完成，请前往用例下载区域下载文件</p>
+    <div class="download-center-body">
+      <el-table :data="fileList" height="420" v-loading="downloadCenterLoading">
+        <el-table-column prop="filename" label="文件名" min-width="280" />
+        <el-table-column prop="size" label="大小" width="120">
+          <template #default="scope">{{ formatSize(scope.row.size) }}</template>
+        </el-table-column>
+        <el-table-column prop="modified_at" label="更新时间" min-width="180">
+          <template #default="scope">{{ formatTime(scope.row.modified_at) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="120">
+          <template #default="scope">
+            <el-button type="primary" link @click="downloadFile(scope.row.filename)">下载</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </div>
     <template #footer>
-      <div class="success-footer">
-        <el-button type="primary" @click="closeSuccessDialog" class="success-btn">
-          确定
-        </el-button>
-      </div>
+      <el-button @click="downloadCenterVisible = false">关闭</el-button>
     </template>
   </el-dialog>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled, InfoFilled, Document, Download } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
+import { UploadFilled, InfoFilled, Document } from '@element-plus/icons-vue'
 
 const fileName = ref('')
 const fileObj = ref(null)
@@ -207,8 +207,9 @@ const outputFile = ref('test_cases.xlsx')
 const concurrency = ref(1)
 const caseType = ref('functional')
 const loading = ref(false)
-const downloadReady = ref(false)
-const showSuccessDialog = ref(false)
+const downloadCenterVisible = ref(false)
+const downloadCenterLoading = ref(false)
+const fileList = ref([])
 
 const shortFileName = computed(() => {
   if (!fileName.value) return ''
@@ -233,7 +234,6 @@ function resetForm() {
   outputFile.value = 'test_cases.xlsx'
   concurrency.value = 1
   caseType.value = 'functional'
-  downloadReady.value = false  // 同时重置下载区域状态
 }
 
 async function handleGenerate() {
@@ -298,9 +298,8 @@ async function handleGenerate() {
     const generateResult = await generateResponse.json()
     
     if (generateResult.success) {
-    downloadReady.value = true
-      showSuccessDialog.value = true
       ElMessage.success('测试用例生成成功！')
+      notifyGenerated(outputFile.value) // 生成成功后的全局通知
     } else {
       throw new Error(generateResult.error || '生成失败')
     }
@@ -312,27 +311,47 @@ async function handleGenerate() {
   }
 }
 
-function handleDownload() {
-  // 下载生成的测试用例文件
-  const downloadUrl = `/ai_generate/download/${outputFile.value}`
-  const link = document.createElement('a')
-  link.href = downloadUrl
-  link.download = outputFile.value
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  
-  ElMessage.success('开始下载测试用例文件')
-  
-  // 下载后不清空表单和下载区，保持状态以便重复下载
+function formatSize(size) {
+  if (!size && size !== 0) return '-'
+  const units = ['B','KB','MB','GB']
+  let i = 0
+  let s = size
+  while (s >= 1024 && i < units.length - 1) { s /= 1024; i++ }
+  return `${s.toFixed(1)} ${units[i]}`
 }
 
-function closeSuccessDialog() {
-  showSuccessDialog.value = false
-  // 下载成功后，可以在这里添加跳转到下载区域的逻辑
-  // ElMessage.success('已跳转到下载区域')
+function formatTime(ts) {
+  if (!ts) return '-'
+  try {
+    const d = new Date(ts)
+    const pad = n => n.toString().padStart(2,'0')
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  } catch { return ts }
 }
 
+function downloadFile(name) {
+  const url = `/ai_generate/download/${name}`
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
+// 生成成功后的全局通知
+function notifyGenerated(name) {
+  ElNotification({
+    title: '生成完成',
+    message: `文件 ${name} 已生成，可在下载中心查看并下载`,
+    type: 'success',
+    position: 'top-right',
+    duration: 6000,
+    showClose: true
+  })
+}
+
+// 修复：优先级标签类型映射
 function getPriorityType(priority) {
   const priorityMap = {
     '高': 'danger',
@@ -342,8 +361,30 @@ function getPriorityType(priority) {
     'P1': 'warning',
     'P2': 'info',
     'P3': 'success'
-  };
+  }
   return priorityMap[priority] || 'info';
+}
+
+function openDownloadCenter() {
+  downloadCenterVisible.value = true
+  fetchFileList()
+}
+
+async function fetchFileList() {
+  try {
+    downloadCenterLoading.value = true
+    const res = await fetch('/ai_generate/files')
+    const data = await res.json()
+    if (data.success) {
+      fileList.value = data.files || []
+    } else {
+      ElMessage.error(data.error || '获取文件列表失败')
+    }
+  } catch (e) {
+    ElMessage.error('获取文件列表失败：' + e.message)
+  } finally {
+    downloadCenterLoading.value = false
+  }
 }
 </script>
 
@@ -417,16 +458,16 @@ function getPriorityType(priority) {
   z-index: 2;
 }
 .ai-generate-upload-card {
-  background: linear-gradient(135deg, #FFFFFF 90%, #38bdf8 100%);
+  background: linear-gradient(135deg, #FFFFFF 60%, #38bdf8 100%);
   box-shadow: 0 8px 32px 0 rgba(56,189,248,0.10), 0 2px 8px 0 rgba(0,0,0,0.04);
   padding-top: 0 !important;
 }
 .ai-generate-param-card {
-  background: linear-gradient(135deg, #FFFFFF 90%, #c145feb3 100%);
+  background: linear-gradient(135deg, #FFFFFF 60%, #c145feb3 100%);
   box-shadow: 0 8px 32px 0 rgba(193,69,254,0.08), 0 2px 8px 0 rgba(0,0,0,0.04);
 }
 .ai-generate-download-card {
-  background: linear-gradient(135deg, #FFFFFF 90%, #45fe88a8 100%);
+  background: linear-gradient(135deg, #FFFFFF 60%, #45fe88a8 100%);
   box-shadow: 0 8px 32px 0 rgba(69,254,136,0.08), 0 2px 8px 0 rgba(0,0,0,0.04);
 }
 .ai-generate-upload-card .ai-generate-card-title {
@@ -452,18 +493,51 @@ function getPriorityType(priority) {
   gap: 10px;
   margin-bottom: 0;
 }
+/* 上传和生成用例按钮统一样式 */
 .ai-generate-upload-btn {
   height: 44px;
   font-size: 17px;
   border-radius: 24px;
   padding: 0 28px;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(80,120,255,0.08);
-  transition: background 0.2s;
-}
-.ai-generate-upload-btn:hover {
-  background: #6c8cff;
+  background: #38bdf8;
+  border-color: #38bdf8;
   color: #fff;
+  box-shadow: 0 2px 8px rgba(56,189,248,0.25);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.ai-generate-upload-btn:hover,
+.ai-generate-upload-btn:focus {
+  background: #0ea5e9;
+  border-color: #0ea5e9;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(56,189,248,0.35);
+}
+/* 禁用和loading状态统一 */
+.ai-generate-upload-btn.is-disabled,
+.ai-generate-upload-btn.is-disabled:hover,
+.ai-generate-upload-btn[disabled],
+.ai-generate-upload-btn[disabled]:hover,
+.ai-generate-upload-btn.is-loading,
+.ai-generate-upload-btn.is-loading:hover {
+  background: #b6e6fa !important;
+  border-color: #b6e6fa !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+}
+/* 覆盖Element Plus默认禁用按钮样式 */
+:deep(.el-button.is-disabled),
+:deep(.el-button.is-disabled:hover),
+:deep(.el-button.is-loading),
+:deep(.el-button.is-loading:hover) {
+  background: #b6e6fa !important;
+  border-color: #b6e6fa !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
 }
 .ai-generate-filename-bubble {
   display: inline-flex;
@@ -714,127 +788,10 @@ function getPriorityType(priority) {
   color: white !important;
 }
 
-/* 成功弹窗样式 */
-.success-dialog .el-dialog__header {
-  display: none;
-}
-
-.success-dialog .el-dialog__body {
-  padding: 40px 30px;
-  text-align: center;
-}
-
-.success-dialog .el-dialog {
-  border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  border: none;
-}
-
-.success-dialog .success-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.success-dialog .success-icon {
-  width: 80px;
-  height: 80px;
-  color: #67c23a;
-  margin-bottom: 20px;
-  background: linear-gradient(135deg, rgba(103, 194, 58, 0.1), rgba(103, 194, 58, 0.05));
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: successPulse 0.6s ease-out;
-}
-
-@keyframes successPulse {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.success-dialog .success-icon svg {
-  width: 40px;
-  height: 40px;
-}
-
-.success-dialog .success-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 12px;
-  font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-}
-
-.success-dialog .success-message {
-  font-size: 16px;
-  color: #666;
-  line-height: 1.6;
-  margin-bottom: 30px;
-  font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-}
-
-.success-dialog .success-footer {
-  text-align: center;
-}
-
-.success-dialog .success-btn {
-  width: 140px;
-  height: 44px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 22px;
-  background: #67c23a;
-  border: none;
-  box-shadow: 0 2px 8px rgba(103, 194, 58, 0.2);
-  transition: all 0.3s ease;
-  color: white;
-}
-
-.success-dialog .success-btn:hover {
-  background: #529b2e;
-  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
-}
-
-.download-btn {
-  background: linear-gradient(135deg, #409EFF, #337ecc);
-  border-color: #409EFF;
-  color: #fff;
-  font-weight: 600;
-  padding: 0 32px;
-  border-radius: 24px;
-  height: 48px;
-  font-size: 16px;
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
-  transition: all 0.3s ease;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.download-btn:hover {
-  background: linear-gradient(135deg, #66b1ff, #409EFF);
-  border-color: #66b1ff;
-  color: #fff;
-  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
-}
-
-.download-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
-}
+/* 下载中心样式 */
+.download-center-dialog :deep(.el-dialog__body) { padding: 0 20px 20px 20px; }
+.download-center-body { margin-top: 6px; }
+.ai-generate-download-center-btn { margin-top: 12px; text-align: center; }
 
 @media (max-width: 1700px) {
   .ai-generate-case-root {
