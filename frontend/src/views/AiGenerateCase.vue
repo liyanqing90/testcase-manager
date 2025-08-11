@@ -73,9 +73,8 @@
           <div class="summary-card-content">
             <div class="summary-card-label">用例类型</div>
             <div class="summary-card-value">
-              <span class="custom-tag functional">功能测试</span>
-              <span class="custom-tag api">接口测试</span>
-              <span class="custom-tag ui_auto">UI自动化测试</span>
+              <span v-if="summary" :class="['custom-tag', caseTypeClass]">{{ caseTypeDisplay }}</span>
+              <span v-else>--</span>
             </div>
           </div>
         </div>
@@ -88,9 +87,10 @@
           <div class="summary-card-content">
             <div class="summary-card-label">优先级分布</div>
             <div class="summary-card-value">
-              <el-tag :type="getPriorityType('P0')" class="priority-tag" size="small">P0: 10</el-tag>
-              <el-tag :type="getPriorityType('P1')" class="priority-tag" size="small">P1: 56</el-tag>
-              <el-tag :type="getPriorityType('P2')" class="priority-tag" size="small">P2: 57</el-tag>
+              <template v-if="summary && summary.priority_counts && Object.keys(summary.priority_counts).length">
+                <el-tag v-for="(count, key) in summary.priority_counts" :key="key" :type="getPriorityType(key)" class="priority-tag" size="small">{{ key }}: {{ count }}</el-tag>
+              </template>
+              <span v-else>--</span>
             </div>
           </div>
         </div>
@@ -102,7 +102,7 @@
           </div>
           <div class="summary-card-content">
             <div class="summary-card-label">用例总数</div>
-            <div class="summary-card-value">123</div>
+            <div class="summary-card-value">{{ summary ? summary.total_cases : '--' }}</div>
           </div>
         </div>
         <div class="summary-card">
@@ -113,7 +113,7 @@
           </div>
           <div class="summary-card-content">
             <div class="summary-card-label">功能测试用例数</div>
-            <div class="summary-card-value">60</div>
+            <div class="summary-card-value">{{ summary ? (summary.category_counts && summary.category_counts['功能测试'] || 0) : '--' }}</div>
           </div>
         </div>
         <div class="summary-card">
@@ -124,7 +124,7 @@
           </div>
           <div class="summary-card-content">
             <div class="summary-card-label">接口测试用例数</div>
-            <div class="summary-card-value">40</div>
+            <div class="summary-card-value">{{ summary ? (summary.category_counts && summary.category_counts['接口测试'] || 0) : '--' }}</div>
           </div>
         </div>
         <div class="summary-card">
@@ -135,7 +135,7 @@
           </div>
           <div class="summary-card-content">
             <div class="summary-card-label">UI自动化测试用例数</div>
-            <div class="summary-card-value">23</div>
+            <div class="summary-card-value">{{ summary ? (summary.category_counts && summary.category_counts['UI自动化测试'] || 0) : '--' }}</div>
           </div>
         </div>
         <div class="summary-card">
@@ -146,7 +146,7 @@
           </div>
           <div class="summary-card-content">
             <div class="summary-card-label">预估文件大小</div>
-            <div class="summary-card-value">1.2MB</div>
+            <div class="summary-card-value">{{ summary ? formatSize(summary.file_size) : '--' }}</div>
           </div>
         </div>
         <div class="summary-card">
@@ -157,7 +157,7 @@
           </div>
           <div class="summary-card-content">
             <div class="summary-card-label">最新生成时间</div>
-            <div class="summary-card-value">2024-05-01 12:34:56</div>
+            <div class="summary-card-value">{{ summary ? formatTime(summary.modified_at || summary.created_at) : '--' }}</div>
           </div>
         </div>
       </div>
@@ -197,7 +197,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import { UploadFilled, InfoFilled, Document } from '@element-plus/icons-vue'
 
@@ -211,12 +211,109 @@ const downloadCenterVisible = ref(false)
 const downloadCenterLoading = ref(false)
 const fileList = ref([])
 
+// 计算：短文件名显示
 const shortFileName = computed(() => {
   if (!fileName.value) return ''
   if (fileName.value.length <= 24) return fileName.value
-  // 省略中间部分
   return fileName.value.slice(0, 12) + '...' + fileName.value.slice(-8)
 })
+
+// 新增：汇总数据状态
+const summary = ref(null)
+
+// 新增：用例类型中文展示
+const caseTypeDisplay = computed(() => {
+  const map = { functional: '功能测试', api: '接口测试', ui_auto: 'UI自动化测试' }
+  return map[caseType.value] || caseType.value
+})
+
+// 新增：用例类型样式类映射
+const caseTypeClass = computed(() => {
+  const map = { functional: 'functional', api: 'api', ui_auto: 'ui_auto' }
+  return map[caseType.value] || ''
+})
+
+// 新增：本地持久化生成状态
+const GENERATE_STATE_KEY = 'ai_generate_state'
+let pollTimer = null
+
+function saveGenerateState(meta) {
+  try { localStorage.setItem(GENERATE_STATE_KEY, JSON.stringify(meta)) } catch {}
+}
+function loadGenerateState() {
+  try { return JSON.parse(localStorage.getItem(GENERATE_STATE_KEY) || 'null') } catch { return null }
+}
+function clearGenerateState() {
+  try { localStorage.removeItem(GENERATE_STATE_KEY) } catch {}
+}
+
+// 轮询检测文件是否已生成
+async function pollForResult(name) {
+  // 避免重复开启
+  if (pollTimer) return
+  const startTs = Date.now()
+  pollTimer = window.setInterval(async () => {
+    // 超时保护：最长轮询30分钟
+    if (Date.now() - startTs > 30 * 60 * 1000) {
+      window.clearInterval(pollTimer)
+      pollTimer = null
+      loading.value = false
+      clearGenerateState()
+      ElMessage.error('生成超时，请稍后重试')
+      return
+    }
+    try {
+      const res = await fetch(`/ai_generate/summary?file=${encodeURIComponent(name)}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.success) {
+          summary.value = data.summary
+          loading.value = false
+          clearGenerateState()
+          window.clearInterval(pollTimer)
+          pollTimer = null
+          notifyGenerated(name)
+        }
+      } else {
+        // 404 未生成，继续轮询；其他错误也继续
+      }
+    } catch {
+      // 网络错误，继续轮询
+    }
+  }, 5000)
+}
+
+// 页面进入时恢复生成中状态
+onMounted(() => {
+  const state = loadGenerateState()
+  if (state && state.inProgress && state.outputFile) {
+    loading.value = true
+    // 恢复按钮loading并开始轮询
+    pollForResult(state.outputFile)
+  }
+})
+
+onUnmounted(() => {
+  if (pollTimer) {
+    window.clearInterval(pollTimer)
+    pollTimer = null
+  }
+})
+
+// 新增：获取Excel汇总
+async function fetchSummary(name) {
+  try {
+    const res = await fetch(`/ai_generate/summary?file=${encodeURIComponent(name)}`)
+    const data = await res.json()
+    if (data.success) {
+      summary.value = data.summary
+    } else {
+      ElMessage.error(data.error || '获取汇总失败')
+    }
+  } catch (e) {
+    ElMessage.error('获取汇总失败：' + e.message)
+  }
+}
 
 function beforeUpload(file) {
   // 如果上传新文件，重置表单状态
@@ -234,6 +331,7 @@ function resetForm() {
   outputFile.value = 'test_cases.xlsx'
   concurrency.value = 1
   caseType.value = 'functional'
+  summary.value = null
 }
 
 async function handleGenerate() {
@@ -258,6 +356,8 @@ async function handleGenerate() {
     }
   )
   
+  // 持久化生成中状态（用于刷新/切页回来保持loading）
+  saveGenerateState({ inProgress: true, outputFile: outputFile.value, startedAt: Date.now(), testType: caseType.value })
   loading.value = true
   try {
     // 1. 上传文件
@@ -298,7 +398,10 @@ async function handleGenerate() {
     const generateResult = await generateResponse.json()
     
     if (generateResult.success) {
-      ElMessage.success('测试用例生成成功！')
+      const summaryFile = generateResult.output_file || outputFile.value
+      await fetchSummary(summaryFile)
+      loading.value = false
+      clearGenerateState()
       notifyGenerated(outputFile.value) // 生成成功后的全局通知
     } else {
       throw new Error(generateResult.error || '生成失败')
@@ -306,8 +409,8 @@ async function handleGenerate() {
     
   } catch (e) {
     ElMessage.error('生成失败：' + e.message)
-  } finally {
     loading.value = false
+    clearGenerateState()
   }
 }
 

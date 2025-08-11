@@ -190,4 +190,104 @@ def list_generated_files():
         })
         
     except Exception as e:
-        return jsonify({'error': f'获取文件列表失败: {str(e)}'}), 500 
+        return jsonify({'error': f'获取文件列表失败: {str(e)}'}), 500
+
+
+# 新增：从生成的Excel统计汇总信息
+@ai_generate_bp.route('/summary', methods=['GET'])
+def get_generated_file_summary():
+    """读取生成的用例Excel，统计优先级分布、总数、各Category数量及文件属性"""
+    try:
+        from openpyxl import load_workbook
+
+        filename = request.args.get('file')
+        if not filename:
+            return jsonify({'error': '缺少参数: file'}), 400
+        
+        # 组装文件路径（生成文件保存于 ai_test_cases 目录）
+        ai_test_cases_dir = os.path.dirname(UPLOAD_FOLDER)
+        file_path = os.path.join(ai_test_cases_dir, filename)
+        if not os.path.exists(file_path):
+            return jsonify({'error': '文件不存在'}), 404
+
+        # 打开Excel（只读，读计算结果）
+        wb = load_workbook(file_path, data_only=True, read_only=True)
+        ws = wb.active
+
+        # 读取表头，建立列索引
+        header = None
+        header_row_idx = None
+        for r_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=1, values_only=True), start=1):
+            header = list(row) if row else []
+            header_row_idx = r_idx
+            break
+
+        if not header:
+            # 没有表头或空表
+            wb.close()
+            file_stat = os.stat(file_path)
+            created_at = datetime.fromtimestamp(file_stat.st_ctime).isoformat()
+            modified_at = datetime.fromtimestamp(file_stat.st_mtime).isoformat()
+            return jsonify({
+                'success': True,
+                'summary': {
+                    'total_cases': 0,
+                    'priority_counts': {},
+                    'category_counts': {},
+                    'file_size': file_stat.st_size,
+                    'created_at': created_at,
+                    'modified_at': modified_at
+                }
+            })
+
+        # 映射列名到索引
+        col_index = {str(h).strip(): idx for idx, h in enumerate(header)}
+        id_idx = col_index.get('ID')
+        priority_idx = col_index.get('Priority')
+        category_idx = col_index.get('Category')
+
+        total_cases = 0
+        priority_counts = {}
+        category_counts = {}
+
+        # 遍历数据行
+        for row in ws.iter_rows(min_row=(header_row_idx + 1), values_only=True):
+            # 取值
+            id_val = row[id_idx] if id_idx is not None and id_idx < len(row) else None
+            priority_val = row[priority_idx] if priority_idx is not None and priority_idx < len(row) else None
+            category_val = row[category_idx] if category_idx is not None and category_idx < len(row) else None
+
+            # 统计总数（按ID是否有值）
+            if id_val is not None and str(id_val).strip() != '':
+                total_cases += 1
+
+            # 统计优先级
+            if priority_val is not None and str(priority_val).strip() != '':
+                key = str(priority_val).strip()
+                priority_counts[key] = priority_counts.get(key, 0) + 1
+
+            # 统计Category
+            if category_val is not None and str(category_val).strip() != '':
+                key = str(category_val).strip()
+                category_counts[key] = category_counts.get(key, 0) + 1
+
+        # 文件属性
+        file_stat = os.stat(file_path)
+        created_at = datetime.fromtimestamp(file_stat.st_ctime).isoformat()
+        modified_at = datetime.fromtimestamp(file_stat.st_mtime).isoformat()
+
+        wb.close()
+
+        return jsonify({
+            'success': True,
+            'summary': {
+                'total_cases': total_cases,
+                'priority_counts': priority_counts,
+                'category_counts': category_counts,
+                'file_size': file_stat.st_size,
+                'created_at': created_at,
+                'modified_at': modified_at
+            }
+        })
+    except Exception as e:
+        return jsonify({'error': f'获取汇总失败: {str(e)}'}), 500 
