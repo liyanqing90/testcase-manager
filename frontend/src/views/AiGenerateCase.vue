@@ -170,7 +170,7 @@
   <el-dialog
     v-model="downloadCenterVisible"
     title="下载中心"
-    width="720px"
+    width="900px"
     class="download-center-dialog"
     :close-on-click-modal="false"
   >
