@@ -285,7 +285,7 @@
         <!-- 用例详情弹窗 -->
         <el-dialog
           v-model="detailDialogVisible"
-          width="60%"
+          width="1000px"
           :show-close="true"
           :close-on-click-modal="false"
           class="testcase-detail-dialog"
@@ -296,7 +296,8 @@
               <h3 class="detail-dialog-title">用例详情</h3>
             </div>
           </template>
-          <el-form label-width="120px" v-if="currentTestCase">
+          <div class="dialog-content-wrapper">
+            <el-form label-width="120px" v-if="currentTestCase">
             <el-form-item label="基本信息:">
               <div class="form-item-content">
                 <div class="basic-info-row">
@@ -347,6 +348,7 @@
               <div class="form-item-content">{{ currentTestCase.expected_results || '无' }}</div>
             </el-form-item>
           </el-form>
+          </div>
           <template #footer>
             <!-- 标记按钮 -->
             <div class="mark-complete-section">
@@ -376,6 +378,7 @@
               <div
                 v-if="currentTestCaseIndex > 0"
                 class="nav-area nav-left-bottom"
+                :class="{ 'disabled': isNavigating }"
                 @click="showPreviousTestCase"
               >
                 <div class="nav-arrow">
@@ -392,6 +395,7 @@
               <div
                 v-if="currentTestCaseIndex < testCases.length - 1"
                 class="nav-area nav-right-bottom"
+                :class="{ 'disabled': isNavigating }"
                 @click="showNextTestCase"
               >
                 <div class="nav-arrow">
@@ -447,6 +451,7 @@ export default {
       currentTestCase: null,
       currentTestCaseIndex: -1,
       isMarkingComplete: false,  // 添加标记状态控制
+      isNavigating: false,       // 添加导航状态控制
       testCaseSearchText: '',    // 用例搜索文本
       filteredTestCases: []      // 过滤后的用例列表
     };
@@ -572,7 +577,12 @@ export default {
 
     // 显示上一条用例
     showPreviousTestCase() {
+      // 防止快速连续点击
+      if (this.isNavigating) return;
+      
       if (this.currentTestCaseIndex > 0) {
+        this.isNavigating = true;
+        
         // 添加滑动动画
         this.addSlideAnimation('left');
 
@@ -580,13 +590,23 @@ export default {
           this.currentTestCaseIndex--;
           this.currentTestCase = this.testCases[this.currentTestCaseIndex];
           this.removeSlideAnimation();
+          
+          // 动画完成后重置导航状态
+          setTimeout(() => {
+            this.isNavigating = false;
+          }, 400);
         }, 200);
       }
     },
 
     // 显示下一条用例
     showNextTestCase() {
+      // 防止快速连续点击
+      if (this.isNavigating) return;
+      
       if (this.currentTestCaseIndex < this.testCases.length - 1) {
+        this.isNavigating = true;
+        
         // 添加滑动动画
         this.addSlideAnimation('right');
 
@@ -594,6 +614,11 @@ export default {
           this.currentTestCaseIndex++;
           this.currentTestCase = this.testCases[this.currentTestCaseIndex];
           this.removeSlideAnimation();
+          
+          // 动画完成后重置导航状态
+          setTimeout(() => {
+            this.isNavigating = false;
+          }, 400);
         }, 200);
       }
     },
@@ -1643,6 +1668,36 @@ export default {
   position: relative;
 }
 
+/* 弹窗内容包装器 - 固定高度和滚动 */
+.dialog-content-wrapper {
+  height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* 隐藏滚动条 */
+.dialog-content-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.dialog-content-wrapper {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* 弹窗固定高度 */
+:deep(.testcase-detail-dialog .el-dialog) {
+  height: 620px;
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.testcase-detail-dialog .el-dialog__body) {
+  height: 460px;
+  overflow: hidden;
+  padding: 20px 20px 0 20px;
+}
+
 /* 底部导航区域 */
 .nav-area {
   display: flex;
@@ -1694,6 +1749,18 @@ export default {
 .nav-area:hover .nav-arrow svg,
 .nav-area:active .nav-arrow svg {
   color: white;
+}
+
+/* 导航按钮禁用状态 */
+.nav-area.disabled {
+  pointer-events: none;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nav-area.disabled .nav-arrow {
+  background: #9ca3af;
+  box-shadow: none;
 }
 
 /* 底部导航样式 */
