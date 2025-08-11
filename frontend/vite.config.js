@@ -12,11 +12,31 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/upload_case': 'http://localhost:5000',
-      '/import_case': 'http://localhost:5000',
-      '/project': 'http://localhost:5000',
-      '/test_case': 'http://localhost:5000',
-      '/ai_generate': 'http://localhost:5000'
+      '/upload_case': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        timeout: 1800000  // 30分钟超时
+      },
+      '/import_case': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        timeout: 1800000
+      },
+      '/project': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        timeout: 1800000
+      },
+      '/test_case': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        timeout: 1800000
+      },
+      '/ai_generate': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        timeout: 1800000  // 30分钟超时，匹配后端超时设置
+      }
     }
   },
   resolve: {
