@@ -146,7 +146,7 @@ class AITestingSystem:
                 # 如果template_path是路径，则从文件加载模板
                 if isinstance(template_path, str):
                     try:
-                        with open(template_path, 'r') as f:
+                        with open(template_path, 'r', encoding='utf-8') as f:
                             template_data = json.load(f)
                         template = Template.from_dict(template_data)
                     except Exception as e:

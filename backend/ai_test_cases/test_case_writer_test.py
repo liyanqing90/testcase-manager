@@ -13,15 +13,15 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 def test_generate_feature_test_cases():
-    """测试为特定功能点生成测试用例的功能"""
+    """测试为特定功能点生成测试用例的功能，就是测试用例覆盖矩阵"""
     # 初始化测试用例编写者代理
     writer = TestCaseWriterAgent()
     
-    # 模拟车牌识别功能点的测试覆盖项
-    feature = "车牌识别"
+    # 功能点的测试覆盖矩阵
+    feature = ""
     feature_items = [
         {
-            "feature": "车牌识别",
+            "feature": "",
             "test_type": "功能测试"
         }
     ]

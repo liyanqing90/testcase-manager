@@ -8,7 +8,7 @@ def get_projects():
     """获取所有项目列表"""
     try:
         cur = mysql.connection.cursor()
-        cur.execute("SELECT id, name, description, maintainers FROM projects")
+        cur.execute("SELECT id, name, description, maintainers FROM projects ORDER BY id ASC")
         projects = cur.fetchall()
         cur.close()
         return jsonify({'projects': projects})

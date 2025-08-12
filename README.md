@@ -2,22 +2,27 @@
 
 [中文版](README_zh.md)
 
-A modern test case management system built with Flask and Vue 3, supporting Excel file batch upload, project management, and test case viewing functionalities.
+A modern test case management system built with Flask and Vue 3, supporting Excel file batch upload, project management, test case viewing, and AI-powered intelligent generation functionalities.
 
 ## Project Features
-
+### project img
+![img.png](img.png)
+![img_1.png](img_1.png)
 ### Core Functionality
 - Project Management: Create, edit, and delete projects with descriptions and maintainer information
 - Excel Batch Upload: Support for .xlsx format file uploads with intelligent Excel content parsing
 - Duplicate Detection: Automatic detection of duplicates within files and in the database
 - Smart Import: Selective import support with ability to assign new IDs to duplicate cases
 - Test Case Viewing: View associated test cases by project with detailed case information display
+- **AI Test Case Generation**: Intelligent test case generation based on documents, supporting multiple test types
 - Responsive Interface: Modern UI design with sidebar navigation support
 
 ### Technical Features
 - Separation of Frontend and Backend: Flask RESTful API with Vue 3 SPA
 - Database Support: MySQL database with support for complex queries and associations
 - File Processing: Excel file parsing and validation capabilities
+- **AI Integration**: Integration with AutoGen framework and OpenAI models for intelligent test case generation
+- **Document Processing**: Support for Word, PDF, Markdown and other document formats
 - Error Handling: Comprehensive exception handling with user-friendly error messages
 - Component Communication: Event-based inter-component communication mechanism
 
@@ -30,11 +35,11 @@ A modern test case management system built with Flask and Vue 3, supporting Exce
 - Flask-MySQLdb: MySQL database connection
 - openpyxl: Excel file processing
 - Werkzeug: File upload handling
-- AutoGen: AI agent framework
-- OpenAI: AI model integration
-- Browser-use: Web automation
-- Playwright: Browser automation
-- Document processing: python-docx, PyPDF2, markdown
+- **AutoGen: AI agent framework**
+- **OpenAI: AI model integration**
+- **Browser-use: Web automation**
+- **Playwright: Browser automation**
+- **Document processing: python-docx, PyPDF2, markdown**
 
 ### Frontend
 - Vue 3: Progressive JavaScript framework
@@ -166,6 +171,27 @@ CREATE TABLE project_cases (
 );
 ```
 
+#### ai_test_generation_history table (AI test case generation history table)
+```sql
+CREATE TABLE `ai_test_generation_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `case_types` json DEFAULT NULL,
+  `priority_distribution` json DEFAULT NULL,
+  `total_cases` int(11) DEFAULT '0',
+  `functional_test_count` int(11) DEFAULT '0',
+  `api_test_count` int(11) DEFAULT '0',
+  `ui_auto_test_count` int(11) DEFAULT '0',
+  `estimated_file_size` bigint(20) DEFAULT NULL,
+  `generated_at` datetime DEFAULT NULL,
+  `filename` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_generated_at` (`generated_at`),
+  KEY `idx_filename` (`filename`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
 ## Quick Start
 
 ### Environment Requirements
@@ -227,6 +253,35 @@ cd frontend
 npm install
 ```
 
+### 4. AI Interface Configuration
+1. Navigate to AI system directory
+```bash
+cd backend/ai_test_cases
+```
+
+2. Create environment configuration file
+```bash
+# Create .env file
+touch .env
+```
+
+3. Configure AI interface parameters
+```bash
+# Edit .env file and add the following configuration
+QWEN_BASE_URL='https://your-ai-api-endpoint.com/v1'
+QWEN_API_KEY='your-api-key-here'
+QWEN_MODEL='qwen-turbo'  # or other supported model names
+
+# If using OpenAI, you can configure
+OPENAI_API_KEY='your-openai-api-key'
+OPENAI_BASE_URL='https://api.openai.com/v1'
+```
+
+4. Install AI system dependencies
+```bash
+pip install -r requirements.txt
+```
+
 #### Start Development Server
 ```bash
 npm run dev
@@ -254,6 +309,16 @@ Frontend application will start at `http://localhost:5173`
 1. View Project Cases: Click the "View Cases" button on the project management page
 2. View Case Details: Click the "View" button in the case list to see complete case information
 
+### AI Test Case Generation
+1. **Upload Documents**: Upload requirement documents in the AI generation page (supports Word, PDF, Markdown and other formats)
+2. **Configure Parameters**: 
+   - Select test type (Functional Testing, API Testing, UI Automation Testing)
+   - Set concurrency (1-5)
+   - Specify output filename
+3. **Start Generation**: Click the "Start Generation" button, the system will automatically analyze documents and generate test cases
+4. **Monitor Progress**: The system displays generation progress and status
+5. **View Results**: After completion, view and download generated test case files in the download center
+
 ## API Interfaces
 
 ### Project Management
@@ -266,6 +331,14 @@ Frontend application will start at `http://localhost:5173`
 ### File Upload
 - `POST /upload_case` - Upload Excel file and parse
 - `POST /import_case` - Import selected test cases
+
+### AI Test Case Generation
+- `POST /ai_generate/upload` - Upload requirement documents
+- `POST /ai_generate/generate` - Generate test cases
+- `GET /ai_generate/files` - Get list of generated files
+- `GET /ai_generate/download/{filename}` - Download generated test case files
+- `GET /ai_generate/summary` - Get generation result summary
+- `GET /ai_generate/latest_summary` - Get latest generation summary
 
 ## UI Features
 
@@ -280,6 +353,7 @@ Frontend application will start at `http://localhost:5173`
 - Modal Operations: Modal dialog-based create, update, and delete operations
 - Real-time Feedback: Immediate feedback on operations
 - Error Messages: User-friendly error information display
+- Progress Display: Real-time progress display for AI generation process
 
 ## Function Details
 
@@ -289,8 +363,15 @@ Frontend application will start at `http://localhost:5173`
 - Data Cleaning: Automatically handles null values and special characters
 - Duplicate Detection: Intelligent detection of duplicates within files and in the database
 
+### AI Test Case Generation
+- **Document Parsing**: Intelligent parsing support for multiple document formats
+- **Test Case Types**: Support for three types: Functional Testing, API Testing, UI Automation Testing
+- **Intelligent Analysis**: AI model-based requirement analysis and test case design
+- **Batch Generation**: Support for batch generation of large numbers of test cases
+- **Quality Assurance**: Generated test cases include complete test steps and expected results
+
 ### Data Validation
-- File Format Validation: Ensures uploaded files are valid Excel format
+- File Format Validation: Ensures uploaded files are valid format
 - Data Integrity: Validates the presence of required fields
 - ID Uniqueness: Ensures test case ID uniqueness
 
@@ -298,6 +379,48 @@ Frontend application will start at `http://localhost:5173`
 - File Upload Errors: Handles file format errors and upload failures
 - Database Errors: Handles database connection and operation exceptions
 - Network Errors: Handles API request timeouts and network exceptions
+- AI Generation Errors: Handles AI model call failures and generation exceptions
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. AI Generation Failure
+**Problem**: Errors occur during AI test case generation process
+**Solutions**:
+- Check if AI interface configuration is correct
+- Confirm if API key is valid
+- Check network connection stability
+- View backend logs for detailed error information
+
+#### 2. Database Connection Failure
+**Problem**: Unable to connect to MySQL database
+**Solutions**:
+- Check if database service is running
+- Confirm database connection parameters are correct
+- Check firewall settings
+- Verify database user permissions
+
+#### 3. Frontend Proxy Errors
+**Problem**: Proxy errors such as ECONNRESET occur
+**Solutions**:
+- Restart frontend and backend services
+- Check if ports are occupied
+- Confirm Vite proxy configuration is correct
+- Check network connection stability
+
+#### 4. File Upload Failure
+**Problem**: Errors occur during file upload process
+**Solutions**:
+- Check if file format is supported
+- Confirm file size is within limits
+- Check upload directory permissions
+- Verify file content integrity
+
+### Log Viewing
+- **Backend Logs**: View error information output in console
+- **Frontend Logs**: View error information in browser console
+- **Database Logs**: View MySQL error logs
 
 ## Deployment Instructions
 
@@ -319,7 +442,18 @@ MYSQL_DB=testcase_manager
 # Flask configuration
 FLASK_ENV=production
 FLASK_SECRET_KEY=your_secret_key
+
+# AI interface configuration
+QWEN_BASE_URL=https://your-ai-api-endpoint.com/v1
+QWEN_API_KEY=your-api-key
+QWEN_MODEL=qwen-turbo
 ```
+
+### Performance Optimization
+1. **Database Optimization**: Add appropriate indexes, optimize query statements
+2. **Caching Strategy**: Use Redis to cache frequently accessed data
+3. **Load Balancing**: Use Nginx for load balancing
+4. **Monitoring and Alerting**: Configure system monitoring and alerting mechanisms
 
 ## Contribution Guidelines
 
@@ -330,6 +464,27 @@ FLASK_SECRET_KEY=your_secret_key
 5. Open a Pull Request
 
 ## Changelog
+
+### Upcoming Planned Updates
+- [ ] Manual test case addition functionality
+- [ ] Execution logs
+- [ ] Test case execution functionality
+- [ ] Test report generation
+- [ ] User permission management
+
+### V1.0.2 (2025-08-12)
+- ✅ Optimized AI test case generation user experience
+- ✅ Fixed issue where file selection clears generation summary
+- ✅ Fixed test case type display issues
+- ✅ Optimized download center popup title styling
+- ✅ Improved error handling and user prompts
+
+### V1.0.1 (2025-08-10)
+- ✅ AI generation capabilities (fully developed) integrated into test case platform
+- ✅ Real-time display of generated test case summary data
+- ✅ Support for multiple test types (Functional Testing, API Testing, UI Automation Testing)
+- ✅ Intelligent document parsing and test case generation
+- ✅ Generation history records and statistics
 
 ### v1.0.0 (2025-08-01)
 - Basic project management functionality

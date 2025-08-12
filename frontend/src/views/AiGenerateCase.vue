@@ -31,7 +31,7 @@
         <div class="ai-generate-card-title">参数配置</div>
         <el-form :inline="false" class="ai-generate-form">
           <el-form-item label="输出文件名：">
-            <el-input v-model="outputFile" placeholder="test_cases.xlsx" />
+            <el-input v-model="outputFile" placeholder="请输入文件名称" />
           </el-form-item>
           <el-form-item label="并发数：">
             <el-input-number v-model="concurrency" :min="1" :max="10" />
@@ -39,7 +39,7 @@
           <el-form-item label="测试类型：">
             <el-select v-model="caseType" placeholder="请选择测试类型">
               <el-option label="功能测试" value="functional" />
-              <el-option label="接口测试" value="api" />
+              <el-option label="接口测试" value="api" disabled />
               <el-option label="UI自动化测试" value="ui_auto" disabled />
             </el-select>
           </el-form-item>
@@ -73,7 +73,12 @@
           <div class="summary-card-content">
             <div class="summary-card-label">用例类型</div>
             <div class="summary-card-value">
-              <span v-if="summary" :class="['custom-tag', caseTypeClass]">{{ caseTypeDisplay }}</span>
+              <template v-if="summary && summary.category_counts">
+                <span v-for="category in getCategoryDisplayList()" :key="category" 
+                      :class="['custom-tag', getCategoryClass(category)]">
+                  {{ category }}
+                </span>
+              </template>
               <span v-else>--</span>
             </div>
           </div>
@@ -113,7 +118,7 @@
           </div>
           <div class="summary-card-content">
             <div class="summary-card-label">功能测试用例数</div>
-            <div class="summary-card-value">{{ summary ? (summary.category_counts && summary.category_counts['功能测试'] || 0) : '--' }}</div>
+            <div class="summary-card-value">{{ summary ? summary.functional_test_count : '--' }}</div>
           </div>
         </div>
         <div class="summary-card">
@@ -124,7 +129,7 @@
           </div>
           <div class="summary-card-content">
             <div class="summary-card-label">接口测试用例数</div>
-            <div class="summary-card-value">{{ summary ? (summary.category_counts && summary.category_counts['接口测试'] || 0) : '--' }}</div>
+            <div class="summary-card-value">{{ summary ? summary.api_test_count : '--' }}</div>
           </div>
         </div>
         <div class="summary-card">
@@ -135,7 +140,7 @@
           </div>
           <div class="summary-card-content">
             <div class="summary-card-label">UI自动化测试用例数</div>
-            <div class="summary-card-value">{{ summary ? (summary.category_counts && summary.category_counts['UI自动化测试'] || 0) : '--' }}</div>
+            <div class="summary-card-value">{{ summary ? summary.ui_auto_test_count : '--' }}</div>
           </div>
         </div>
         <div class="summary-card">
@@ -174,6 +179,9 @@
     class="download-center-dialog"
     :close-on-click-modal="false"
   >
+    <template #header>
+      <div class="download-center-title">下载中心</div>
+    </template>
     <div class="download-center-body">
       <el-table :data="fileList" height="420" v-loading="downloadCenterLoading">
         <el-table-column prop="filename" label="文件名" min-width="280" />
@@ -203,7 +211,7 @@ import { UploadFilled, InfoFilled, Document } from '@element-plus/icons-vue'
 
 const fileName = ref('')
 const fileObj = ref(null)
-const outputFile = ref('test_cases.xlsx')
+const outputFile = ref('')
 const concurrency = ref(1)
 const caseType = ref('functional')
 const loading = ref(false)
@@ -263,7 +271,14 @@ async function pollForResult(name) {
       return
     }
     try {
-      const res = await fetch(`/ai_generate/summary?file=${encodeURIComponent(name)}`)
+      // 从本地存储中获取测试类型，如果没有则使用默认值
+      const state = loadGenerateState()
+      const testType = state ? state.testType : 'functional'
+      
+      // 确保文件名包含.xlsx扩展名
+      const fullFileName = name.endsWith('.xlsx') ? name : name + '.xlsx'
+      
+      const res = await fetch(`/ai_generate/summary?file=${encodeURIComponent(fullFileName)}&test_type=${testType}`)
       if (res.ok) {
         const data = await res.json()
         if (data.success) {
@@ -272,7 +287,7 @@ async function pollForResult(name) {
           clearGenerateState()
           window.clearInterval(pollTimer)
           pollTimer = null
-          notifyGenerated(name)
+          notifyGenerated(fullFileName)
         }
       } else {
         // 404 未生成，继续轮询；其他错误也继续
@@ -283,12 +298,17 @@ async function pollForResult(name) {
   }, 5000)
 }
 
-// 页面进入时恢复生成中状态
-onMounted(() => {
+// 页面进入时恢复生成中状态并获取最新汇总
+onMounted(async () => {
   const state = loadGenerateState()
+  
+  // 无论是否有正在进行的生成，都先获取最新汇总数据
+  // 这样可以确保每次进入页面都显示最新的生成结果
+  await fetchLatestSummary()
+  
+  // 如果有正在进行的生成任务，恢复loading状态并开始轮询
   if (state && state.inProgress && state.outputFile) {
     loading.value = true
-    // 恢复按钮loading并开始轮询
     pollForResult(state.outputFile)
   }
 })
@@ -301,9 +321,9 @@ onUnmounted(() => {
 })
 
 // 新增：获取Excel汇总
-async function fetchSummary(name) {
+async function fetchSummary(name, testType = 'functional') {
   try {
-    const res = await fetch(`/ai_generate/summary?file=${encodeURIComponent(name)}`)
+    const res = await fetch(`/ai_generate/summary?file=${encodeURIComponent(name)}&test_type=${testType}`)
     const data = await res.json()
     if (data.success) {
       summary.value = data.summary
@@ -315,9 +335,24 @@ async function fetchSummary(name) {
   }
 }
 
+// 新增：获取最新汇总数据
+async function fetchLatestSummary() {
+  try {
+    const res = await fetch('/ai_generate/latest_summary')
+    const data = await res.json()
+    if (data.success) {
+      summary.value = data.summary
+    } else {
+      console.log('暂无生成历史记录')
+    }
+  } catch (e) {
+    console.log('获取最新汇总失败：' + e.message)
+  }
+}
+
 function beforeUpload(file) {
-  // 如果上传新文件，重置表单状态
-  resetForm()
+  // 如果上传新文件，只重置文件相关状态，保留生成总结数据
+  resetFileState()
   
   fileName.value = file.name
   fileObj.value = file
@@ -325,12 +360,18 @@ function beforeUpload(file) {
   return false
 }
 
-function resetForm() {
+function resetFileState() {
   fileName.value = ''
   fileObj.value = null
-  outputFile.value = 'test_cases.xlsx'
+  outputFile.value = ''
   concurrency.value = 1
   caseType.value = 'functional'
+  // 注意：不再清除 summary.value，保留生成总结数据
+}
+
+function resetForm() {
+  // 完全重置表单，包括清除生成总结数据
+  resetFileState()
   summary.value = null
 }
 
@@ -357,7 +398,9 @@ async function handleGenerate() {
   )
   
   // 持久化生成中状态（用于刷新/切页回来保持loading）
-  saveGenerateState({ inProgress: true, outputFile: outputFile.value, startedAt: Date.now(), testType: caseType.value })
+  // 确保保存完整的文件名（包含.xlsx扩展名）
+  const fullOutputFileName = outputFile.value.endsWith('.xlsx') ? outputFile.value : outputFile.value + '.xlsx'
+  saveGenerateState({ inProgress: true, outputFile: fullOutputFileName, startedAt: Date.now(), testType: caseType.value })
   loading.value = true
   try {
     // 1. 上传文件
@@ -387,7 +430,9 @@ async function handleGenerate() {
         output_filename: outputFile.value,
         test_type: caseType.value,
         concurrency: concurrency.value
-      })
+      }),
+      // 添加超时和重试配置
+      signal: AbortSignal.timeout(1800000)  // 30分钟超时
     })
     
     if (!generateResponse.ok) {
@@ -399,7 +444,7 @@ async function handleGenerate() {
     
     if (generateResult.success) {
       const summaryFile = generateResult.output_file || outputFile.value
-      await fetchSummary(summaryFile)
+      await fetchSummary(summaryFile, caseType.value)  // 传递用户选择的测试类型
       loading.value = false
       clearGenerateState()
       notifyGenerated(outputFile.value) // 生成成功后的全局通知
@@ -408,9 +453,27 @@ async function handleGenerate() {
     }
     
   } catch (e) {
-    ElMessage.error('生成失败：' + e.message)
+    // 优化错误处理，提供更友好的错误提示
+    let errorMessage = '生成失败：'
+    
+    if (e.name === 'AbortError') {
+      errorMessage += '请求超时，请检查网络连接后重试'
+    } else if (e.message && e.message.includes('ECONNRESET')) {
+      errorMessage += '网络连接中断，这是AI生成的正常现象，请稍后查看结果'
+    } else if (e.message && e.message.includes('Failed to fetch')) {
+      errorMessage += '网络请求失败，请检查网络连接'
+    } else {
+      errorMessage += e.message || '未知错误'
+    }
+    
+    ElMessage.error(errorMessage)
     loading.value = false
     clearGenerateState()
+    
+    // 如果是ECONNRESET错误，提示用户稍后查看结果
+    if (e.message && e.message.includes('ECONNRESET')) {
+      ElMessage.info('AI生成可能需要较长时间，请稍后在生成历史中查看结果')
+    }
   }
 }
 
@@ -466,6 +529,58 @@ function getPriorityType(priority) {
     'P3': 'success'
   }
   return priorityMap[priority] || 'info';
+}
+
+// 新增：用例类型样式类映射
+function getCategoryClass(category) {
+  const categoryMap = {
+    '功能测试': 'functional',
+    '接口测试': 'api',
+    'UI自动化测试': 'ui_auto'
+  }
+  return categoryMap[category] || 'functional'; // 默认使用功能测试样式
+}
+
+// 新增：处理用例类型显示列表，兼容对象和数组格式
+function getCategoryDisplayList() {
+  if (!summary.value || !summary.value.category_counts) {
+    return [];
+  }
+  
+  const categoryCounts = summary.value.category_counts;
+  
+  // 如果是数组格式，直接返回
+  if (Array.isArray(categoryCounts)) {
+    return categoryCounts;
+  }
+  
+  // 如果是对象格式，返回有数量的类型
+  if (typeof categoryCounts === 'object') {
+    return Object.keys(categoryCounts).filter(category => categoryCounts[category] > 0);
+  }
+  
+  return [];
+}
+
+// 新增：获取特定类型的用例数量，兼容对象和数组格式
+function getCategoryCount(categoryName) {
+  if (!summary.value || !summary.value.category_counts) {
+    return 0;
+  }
+  
+  const categoryCounts = summary.value.category_counts;
+  
+  // 如果是数组格式，检查是否包含该类型
+  if (Array.isArray(categoryCounts)) {
+    return categoryCounts.includes(categoryName) ? 1 : 0;
+  }
+  
+  // 如果是对象格式，返回对应的数量
+  if (typeof categoryCounts === 'object') {
+    return categoryCounts[categoryName] || 0;
+  }
+  
+  return 0;
 }
 
 function openDownloadCenter() {
@@ -695,6 +810,16 @@ async function fetchFileList() {
 :deep(.ai-generate-form .el-select) {
   width: 100%;
 }
+
+/* 输入提示样式 */
+.input-tip {
+  color: #9ca3af;
+  font-size: 13px;
+  margin-top: 6px;
+  margin-left: 100px;
+  font-weight: 400;
+  line-height: 1.4;
+}
 .ai-generate-form .el-button {
   /* 统一按钮样式由ai-generate-upload-btn控制，无需额外样式 */
 }
@@ -895,6 +1020,30 @@ async function fetchFileList() {
 .download-center-dialog :deep(.el-dialog__body) { padding: 0 20px 20px 20px; }
 .download-center-body { margin-top: 6px; }
 .ai-generate-download-center-btn { margin-top: 12px; text-align: center; }
+
+/* 下载中心标题样式 */
+.download-center-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: #333;
+  letter-spacing: 0.5px;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  position: relative;
+}
+
+/* 确保弹窗标题区域居中 */
+.download-center-dialog :deep(.el-dialog__header) {
+  text-align: center;
+  padding: 20px 20px 0 20px;
+}
+
+.download-center-dialog :deep(.el-dialog__headerbtn) {
+  top: 20px;
+  right: 20px;
+}
 
 @media (max-width: 1700px) {
   .ai-generate-case-root {

@@ -11,6 +11,16 @@ mysql = MySQL()
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    
+    # 添加Flask超时配置
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+    app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30分钟
+    app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB文件上传限制
+    
+    # 添加更多连接稳定性配置
+    app.config['JSON_AS_ASCII'] = False
+    app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+    
     mysql.init_app(app)
     CORS(app)
 
@@ -32,4 +42,11 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(host='0.0.0.0', port=5000, debug=True) 
+    # 优化Flask运行配置
+    app.run(
+        host='0.0.0.0', 
+        port=5000, 
+        debug=True,
+        threaded=True,  # 启用多线程
+        use_reloader=False  # 禁用自动重载，避免连接问题
+    ) 

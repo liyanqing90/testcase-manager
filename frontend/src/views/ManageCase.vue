@@ -461,12 +461,17 @@ export default {
   computed: {
     // 筛选项目
     filteredProjects() {
+      let projects = this.projects;
+      
+      // 按ID升序排序
+      projects = projects.sort((a, b) => a.id - b.id);
+      
       if (!this.filterText) {
-        return this.projects;
+        return projects;
       }
 
       const searchText = this.filterText.toLowerCase();
-      return this.projects.filter(project => {
+      return projects.filter(project => {
         return (
           project.id.toString().includes(searchText) ||
           project.name.toLowerCase().includes(searchText) ||

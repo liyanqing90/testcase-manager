@@ -37,3 +37,22 @@ CREATE TABLE IF NOT EXISTS project_cases (
     FOREIGN KEY (project_id) REFERENCES projects(id),
     FOREIGN KEY (test_case_id) REFERENCES test_cases(id)
 );
+
+-- 创建AI生成历史记录表
+CREATE TABLE `ai_test_generation_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `case_types` json DEFAULT NULL,
+  `priority_distribution` json DEFAULT NULL,
+  `total_cases` int(11) DEFAULT '0',
+  `functional_test_count` int(11) DEFAULT '0',
+  `api_test_count` int(11) DEFAULT '0',
+  `ui_auto_test_count` int(11) DEFAULT '0',
+  `estimated_file_size` bigint(20) DEFAULT NULL,
+  `generated_at` datetime DEFAULT NULL,
+  `filename` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_generated_at` (`generated_at`),
+  KEY `idx_filename` (`filename`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

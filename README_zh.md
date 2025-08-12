@@ -1,21 +1,26 @@
 # 测试用例管理系统
 
-一个基于 Flask + Vue 3 的现代化测试用例管理系统，支持Excel文件批量上传、项目管理、用例查看等功能。
+一个基于 Flask + Vue 3 的现代化测试用例管理系统，支持Excel文件批量上传、项目管理、用例查看、AI智能生成等功能。
 
 ## 项目特性
-
+### 项目截图
+![img.png](img.png)
+![img_1.png](img_1.png)
 ### 核心功能
 - 项目管理: 创建、编辑、删除项目，支持项目描述和维护人员管理
 - Excel批量上传: 支持 `.xlsx` 格式文件上传，智能解析Excel内容
 - 重复检测: 自动检测文件内重复和数据库中已存在的用例
 - 智能导入: 支持选择性导入，可为重复用例指定新ID
 - 用例查看: 按项目查看关联的测试用例，支持详细用例信息展示
+- **AI测试用例生成**: 基于文档的智能测试用例生成，支持多种测试类型
 - 响应式界面: 现代化的UI设计，支持侧边栏导航
 
 ### 技术特性
 - 前后端分离: Flask RESTful API + Vue 3 SPA
 - 数据库支持: MySQL数据库，支持复杂查询和关联
 - 文件处理: 支持Excel文件解析和验证
+- **AI集成**: 集成AutoGen框架和OpenAI模型，支持智能测试用例生成
+- **文档解析**: 支持Word、PDF、Markdown等多种文档格式
 - 错误处理: 完善的异常处理和用户友好的错误提示
 - 组件通信: 基于事件的组件间通信机制
 
@@ -28,11 +33,11 @@
 - Flask-MySQLdb: MySQL数据库连接
 - openpyxl: Excel文件处理
 - Werkzeug: 文件上传处理
-- AutoGen: AI代理框架
-- OpenAI: AI模型集成
-- Browser-use: Web自动化
-- Playwright: 浏览器自动化
-- 文档处理: python-docx, PyPDF2, markdown
+- **AutoGen: AI代理框架**
+- **OpenAI: AI模型集成**
+- **Browser-use: Web自动化**
+- **Playwright: 浏览器自动化**
+- **文档处理: python-docx, PyPDF2, markdown**
 
 ### 前端
 - Vue 3: 渐进式JavaScript框架
@@ -164,6 +169,27 @@ CREATE TABLE project_cases (
 );
 ```
 
+#### ai_test_generation_history 表 (AI测试用例生成历史表)
+```sql
+CREATE TABLE `ai_test_generation_history` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `case_types` json DEFAULT NULL,
+  `priority_distribution` json DEFAULT NULL,
+  `total_cases` int(11) DEFAULT '0',
+  `functional_test_count` int(11) DEFAULT '0',
+  `api_test_count` int(11) DEFAULT '0',
+  `ui_auto_test_count` int(11) DEFAULT '0',
+  `estimated_file_size` bigint(20) DEFAULT NULL,
+  `generated_at` datetime DEFAULT NULL,
+  `filename` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_generated_at` (`generated_at`),
+  KEY `idx_filename` (`filename`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
 ## 快速开始
 
 ### 环境要求
@@ -225,6 +251,35 @@ cd frontend
 npm install
 ```
 
+### 4. AI接口配置
+1. 进入AI系统目录
+```bash
+cd backend/ai_test_cases
+```
+
+2. 创建环境配置文件
+```bash
+# 创建.env文件
+touch .env
+```
+
+3. 配置AI接口参数
+```bash
+# 编辑.env文件，添加以下配置
+QWEN_BASE_URL='https://your-ai-api-endpoint.com/v1'
+QWEN_API_KEY='your-api-key-here'
+QWEN_MODEL='qwen-turbo'  # 或其他支持的模型名称
+
+# 如果使用OpenAI，可以配置
+OPENAI_API_KEY='your-openai-api-key'
+OPENAI_BASE_URL='https://api.openai.com/v1'
+```
+
+4. 安装AI系统依赖
+```bash
+pip install -r requirements.txt
+```
+
 #### 启动开发服务器
 ```bash
 npm run dev
@@ -252,6 +307,16 @@ npm run dev
 1. **查看项目用例**: 在项目管理页面点击"查看用例"按钮
 2. **查看用例详情**: 在用例列表中点击"查看"按钮查看完整用例信息
 
+### AI测试用例生成
+1. **上传文档**: 在AI生成页面上传需求文档（支持Word、PDF、Markdown等格式）
+2. **配置参数**: 
+   - 选择测试类型（功能测试、接口测试、UI自动化测试）
+   - 设置并发数（1-5）
+   - 指定输出文件名
+3. **开始生成**: 点击"开始生成"按钮，系统将自动分析文档并生成测试用例
+4. **监控进度**: 系统会显示生成进度和状态
+5. **查看结果**: 生成完成后可在下载中心查看和下载生成的测试用例文件
+
 ## API接口
 
 ### 项目管理
@@ -264,6 +329,14 @@ npm run dev
 ### 文件上传
 - `POST /upload_case` - 上传Excel文件并解析
 - `POST /import_case` - 导入选中的测试用例
+
+### AI测试用例生成
+- `POST /ai_generate/upload` - 上传需求文档
+- `POST /ai_generate/generate` - 生成测试用例
+- `GET /ai_generate/files` - 获取生成的文件列表
+- `GET /ai_generate/download/{filename}` - 下载生成的测试用例文件
+- `GET /ai_generate/summary` - 获取生成结果摘要
+- `GET /ai_generate/latest_summary` - 获取最新生成摘要
 
 ## 界面特性
 
@@ -278,6 +351,7 @@ npm run dev
 - **弹窗操作**: 模态框形式的增删改操作
 - **实时反馈**: 操作结果即时反馈
 - **错误提示**: 友好的错误信息展示
+- **进度显示**: AI生成过程的实时进度展示
 
 ## 功能详解
 
@@ -287,8 +361,15 @@ npm run dev
 - **数据清洗**: 自动处理空值和特殊字符
 - **重复检测**: 智能检测文件内和数据库中的重复数据
 
+### AI测试用例生成
+- **文档解析**: 支持多种文档格式的智能解析
+- **用例类型**: 支持功能测试、接口测试、UI自动化测试三种类型
+- **智能分析**: 基于AI模型的需求分析和用例设计
+- **批量生成**: 支持批量生成大量测试用例
+- **质量保证**: 生成的用例包含完整的测试步骤和预期结果
+
 ### 数据验证
-- **文件格式验证**: 确保上传文件为有效Excel格式
+- **文件格式验证**: 确保上传文件为有效格式
 - **数据完整性**: 验证必要字段的存在性
 - **ID唯一性**: 确保测试用例ID的唯一性
 
@@ -296,6 +377,48 @@ npm run dev
 - **文件上传错误**: 处理文件格式错误和上传失败
 - **数据库错误**: 处理数据库连接和操作异常
 - **网络错误**: 处理API请求超时和网络异常
+- **AI生成错误**: 处理AI模型调用失败和生成异常
+
+## 故障排除
+
+### 常见问题
+
+#### 1. AI生成失败
+**问题**: AI测试用例生成过程中出现错误
+**解决方案**:
+- 检查AI接口配置是否正确
+- 确认API密钥是否有效
+- 检查网络连接是否稳定
+- 查看后端日志获取详细错误信息
+
+#### 2. 数据库连接失败
+**问题**: 无法连接到MySQL数据库
+**解决方案**:
+- 检查数据库服务是否启动
+- 确认数据库连接参数是否正确
+- 检查防火墙设置
+- 验证数据库用户权限
+
+#### 3. 前端代理错误
+**问题**: 出现ECONNRESET等代理错误
+**解决方案**:
+- 重启前端和后端服务
+- 检查端口是否被占用
+- 确认Vite代理配置是否正确
+- 检查网络连接稳定性
+
+#### 4. 文件上传失败
+**问题**: 文件上传过程中出现错误
+**解决方案**:
+- 检查文件格式是否支持
+- 确认文件大小是否超限
+- 检查上传目录权限
+- 验证文件内容是否完整
+
+### 日志查看
+- **后端日志**: 查看控制台输出的错误信息
+- **前端日志**: 查看浏览器控制台的错误信息
+- **数据库日志**: 查看MySQL错误日志
 
 ## 部署说明
 
@@ -317,7 +440,18 @@ MYSQL_DB=testcase_manager
 # Flask配置
 FLASK_ENV=production
 FLASK_SECRET_KEY=your_secret_key
+
+# AI接口配置
+QWEN_BASE_URL=https://your-ai-api-endpoint.com/v1
+QWEN_API_KEY=your-api-key
+QWEN_MODEL=qwen-turbo
 ```
+
+### 性能优化
+1. **数据库优化**: 添加适当的索引，优化查询语句
+2. **缓存策略**: 使用Redis缓存频繁访问的数据
+3. **负载均衡**: 使用Nginx进行负载均衡
+4. **监控告警**: 配置系统监控和告警机制
 
 ## 贡献指南
 
@@ -328,9 +462,28 @@ FLASK_SECRET_KEY=your_secret_key
 5. 打开 Pull Request
 
 ## 更新日志
+
 ### 下一次计划更新内容
 - [ ] 手动增加测试用例功能
-- [ ] AI生成能力（已开发完成）接入用例平台
+- [ ] 运行日志
+- [ ] 测试用例执行功能
+- [ ] 测试报告生成
+- [ ] 用户权限管理
+
+### V1.0.2 (2025-08-12)
+- ✅ 优化AI生成用例的用户体验
+- ✅ 修复文件选择后清除生成总结的问题
+- ✅ 修复用例类型显示问题
+- ✅ 优化下载中心弹窗标题样式
+- ✅ 改进错误处理和用户提示
+
+### V1.0.1 (2025-08-10)
+- ✅ AI生成能力（已开发完成）接入用例平台
+- ✅ 生成用例总结数据实时显示
+- ✅ 支持多种测试类型（功能测试、接口测试、UI自动化测试）
+- ✅ 智能文档解析和用例生成
+- ✅ 生成历史记录和统计
+
 ### v1.0.0 (2025-08-01)
 - ✅ 基础项目管理功能
 - ✅ Excel文件上传和解析
