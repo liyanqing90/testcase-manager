@@ -49,7 +49,7 @@
             <div class="project-actions">
               <el-button
                 size="small"
-                type="text"
+                link
                 @click.stop="openEditDialog(project)"
                 class="action-btn edit-btn"
               >
@@ -59,7 +59,7 @@
               </el-button>
               <el-button
                 size="small"
-                type="text"
+                link
                 @click.stop="deleteProject(project.id)"
                 class="action-btn delete-btn"
               >
@@ -427,7 +427,6 @@ export default {
   data() {
     return {
       projects: [],
-      filteredProjects: [],
       filterText: '',
       dialogVisible: false,
       drawerVisible: false,
