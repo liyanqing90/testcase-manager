@@ -51,7 +51,7 @@ coverage.xml
 *.pot
 
 # Django stuff:
-*.log
+# *.log  # 注释掉，保留项目需要的日志文件
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -146,7 +146,8 @@ backend/uploads/
 node_modules/
 
 # Logs
-logs
+# logs  # 注释掉，保留项目logs目录
+# *.log  # 注释掉，保留项目需要的日志文件
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
