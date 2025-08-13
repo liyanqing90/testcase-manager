@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import ManageCase from './views/ManageCase.vue';
 import UploadCase from './views/UploadCase.vue';
 import AiGenerateCase from './views/AiGenerateCase.vue';
+import LogsView from './views/LogsView.vue';
 
 const routes = [
   {
@@ -22,6 +23,11 @@ const routes = [
     path: '/ai-generate',
     name: 'AiGenerateCase',
     component: AiGenerateCase
+  },
+  {
+    path: '/logs',
+    name: 'LogsView',
+    component: LogsView
   }
 ];
 

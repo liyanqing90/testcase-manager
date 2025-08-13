@@ -4,11 +4,42 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 
+// 自定义插件：处理前端路由刷新
+const historyFallbackPlugin = () => {
+  return {
+    name: 'history-fallback',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        // 如果是API请求，直接跳过
+        if (req.url.startsWith('/logs/') || 
+            req.url.startsWith('/upload_case/') || 
+            req.url.startsWith('/import_case/') || 
+            req.url.startsWith('/project/') || 
+            req.url.startsWith('/test_case/') || 
+            req.url.startsWith('/ai_generate/')) {
+          return next()
+        }
+        
+        // 如果是前端路由，返回index.html
+        if (req.url.startsWith('/logs') || 
+            req.url.startsWith('/manage') || 
+            req.url.startsWith('/upload') || 
+            req.url.startsWith('/ai-generate')) {
+          req.url = '/index.html'
+        }
+        
+        next()
+      })
+    }
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     vueDevTools(),
+    historyFallbackPlugin(),
   ],
   server: {
     proxy: {
@@ -76,6 +107,12 @@ export default defineConfig({
             console.log('Proxy connection closed');
           });
         }
+      },
+      '/logs': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        timeout: 30000,  // 30秒超时
+        proxyTimeout: 30000
       }
     }
   },

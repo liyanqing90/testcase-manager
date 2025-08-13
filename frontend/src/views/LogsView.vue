@@ -143,6 +143,27 @@
             <div class="monitor-title">
               <el-icon><Monitor /></el-icon>
               <span>实时日志监控</span>
+              <!-- 连接状态指示器 -->
+              <div class="connection-status">
+                <el-tag 
+                  :type="connectionStatus === 'connected' ? 'success' : 
+                         connectionStatus === 'connecting' ? 'warning' : 
+                         connectionStatus === 'error' ? 'danger' : 'info'"
+                  size="small"
+                >
+                  <el-icon class="el-icon--left">
+                    <Monitor v-if="connectionStatus === 'connected'" />
+                    <div v-else-if="connectionStatus === 'connecting'" class="custom-loading">
+                      <div class="loading-spinner"></div>
+                    </div>
+                    <WarningFilled v-else-if="connectionStatus === 'error'" />
+                    <InfoFilled v-else />
+                  </el-icon>
+                  {{ connectionStatus === 'connected' ? '已连接' : 
+                     connectionStatus === 'connecting' ? '连接中' : 
+                     connectionStatus === 'error' ? '连接错误' : '未连接' }}
+                </el-tag>
+              </div>
             </div>
             <div class="monitor-controls">
               <div class="control-card">
@@ -204,14 +225,25 @@
             </div>
           </div>
           
-          <!-- 滚动到底部按钮 -->
-          <div v-if="!autoScroll && showScrollToBottom" class="scroll-to-bottom">
+          <!-- 滚动控制按钮 -->
+          <div v-if="!autoScroll" class="scroll-controls">
+            <!-- 滚动到顶部按钮 -->
+            <el-button 
+              type="info" 
+              circle
+              size="default" 
+              @click="scrollToTop"
+              :icon="ArrowUp"
+              class="scroll-to-top"
+            />
+            <!-- 滚动到底部按钮 -->
             <el-button 
               type="primary" 
               circle
               size="default" 
               @click="scrollToBottom"
               :icon="ArrowDown"
+              class="scroll-to-bottom"
             />
           </div>
       </div>
@@ -222,7 +254,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, ElConfigProvider } from 'element-plus'
 import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs'
 import { 
@@ -237,7 +269,9 @@ import {
   Tools,
   Monitor,
   Delete,
-  ArrowDown
+  ArrowDown,
+  ArrowUp,
+  Loading
 } from '@element-plus/icons-vue'
 
 // 筛选表单数据
@@ -256,51 +290,46 @@ const statistics = reactive({
   debug: 0             // DEBUG总数
 })
 
+// 更新统计数据
+const updateStatistics = () => {
+  const stats = {
+    total: logs.value.length,
+    info: 0,
+    warning: 0,
+    error: 0,
+    debug: 0
+  }
+  
+  for (const log of logs.value) {
+    const level = log.level?.toUpperCase()
+    if (level === 'INFO') {
+      stats.info++
+    } else if (level === 'WARNING') {
+      stats.warning++
+    } else if (level === 'ERROR') {
+      stats.error++
+    } else if (level === 'DEBUG') {
+      stats.debug++
+    }
+  }
+  
+  Object.assign(statistics, stats)
+}
+
 // 中文语言配置
 const locale = zhCn
 
 // 实时日志监控相关
 const logsContentRef = ref(null)
-const autoScroll = ref(true)
+const autoScroll = ref(false)
 const showScrollToBottom = ref(false)
 const logs = ref([])
+const connectionStatus = ref('disconnected') // 连接状态：disconnected, connecting, connected, error
 
-// 模拟日志数据（后续接入后端时替换）
-const mockLogs = [
-  {
-    timestamp: '2025-08-12 16:10:46',
-    level: 'INFO',
-    agent: 'root',
-    message: 'Logging configured. Level: INFO, File: logs\\ai_tester.log'
-  },
-  {
-    timestamp: '2025-08-12 16:10:48',
-    level: 'INFO',
-    agent: 'src.utils.agent_io',
-    message: '已加载test_designer的执行结果'
-  },
-  {
-    timestamp: '2025-08-12 16:10:48',
-    level: 'INFO',
-    agent: 'agents.test_designer',
-    message: '成功加载之前的测试设计平衡'
-  },
-  {
-    timestamp: '2025-08-12 16:11:34',
-    level: 'WARNING',
-    agent: 'autogen.oai.client',
-    message: 'Model qwen-plus-latest is not found. The cost will be 0.'
-  },
-  {
-    timestamp: '2025-08-12 16:12:06',
-    level: 'ERROR',
-    agent: 'agents.requirement_analyst',
-    message: 'AI响应解析失败，尝试其他解析方式'
-  }
-]
+
 
 // 搜索处理
-const handleSearch = () => {
+const handleSearch = async () => {
   // 构建搜索条件
   const searchConditions = {
     level: filterForm.level,
@@ -314,9 +343,31 @@ const handleSearch = () => {
     return
   }
   
-  // 输出搜索条件（后续接入后端时使用）
-  console.log('搜索条件:', searchConditions)
-  ElMessage.success('搜索条件已设置，等待后端接入')
+  try {
+    // 调用后端API进行日志筛选
+    const params = new URLSearchParams()
+    if (searchConditions.level) params.append('level', searchConditions.level)
+    if (searchConditions.keyword) params.append('keyword', searchConditions.keyword)
+    if (searchConditions.timeRange) {
+      params.append('start_time', searchConditions.timeRange[0])
+      params.append('end_time', searchConditions.timeRange[1])
+    }
+    
+    const response = await fetch(`/logs/get_logs?${params.toString()}`)
+    const data = await response.json()
+    
+    if (data.success) {
+      logs.value = data.logs
+      // 更新统计数据
+      updateStatistics()
+      ElMessage.success(`找到 ${data.logs.length} 条符合条件的日志`)
+    } else {
+      ElMessage.error(data.error || '搜索失败')
+    }
+  } catch (error) {
+    console.error('搜索日志失败:', error)
+    ElMessage.error('搜索失败，请稍后重试')
+  }
 }
 
 // 重置处理
@@ -324,34 +375,25 @@ const handleReset = () => {
   filterForm.level = ''
   filterForm.timeRange = null
   filterForm.keyword = ''
+  // 重新加载所有日志并更新统计
+  loadInitialLogs()
   ElMessage.info('筛选条件已重置')
 }
 
-// 日志监控相关方法
-const handleClearLogs = () => {
-  ElMessageBox.confirm(
-    '确定要清空所有日志内容吗？此操作不可恢复。',
-    '确认清空',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    }
-  ).then(() => {
-    logs.value = []
-    ElMessage.success('日志内容已清空')
-  }).catch(() => {
-    // 用户取消操作
-  })
-}
+
 
 const handleScroll = () => {
-  if (!autoScroll.value) {
-    const element = logsContentRef.value
-    if (element) {
-      const { scrollTop, scrollHeight, clientHeight } = element
-      showScrollToBottom.value = scrollTop + clientHeight < scrollHeight - 10
-    }
+  // 滚动事件处理，现在主要用于记录滚动状态
+  // 不再需要控制按钮显示逻辑
+}
+
+const scrollToTop = () => {
+  const element = logsContentRef.value
+  if (element) {
+    element.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    })
   }
 }
 
@@ -362,7 +404,6 @@ const scrollToBottom = () => {
       top: element.scrollHeight,
       behavior: 'smooth'
     })
-    showScrollToBottom.value = false
   }
 }
 
@@ -380,38 +421,177 @@ const getLogLevelTagType = (level) => {
   return typeMap[level] || 'primary'
 }
 
-// 模拟实时日志更新（后续接入后端时替换）
-const startMockLogs = () => {
-  // 初始化模拟数据
-  logs.value = [...mockLogs]
-  
-  // 模拟实时更新（每3秒添加一条新日志）
-  setInterval(() => {
-    const newLog = {
-      timestamp: new Date().toLocaleString('zh-CN'),
-      level: ['INFO', 'WARNING', 'ERROR', 'DEBUG'][Math.floor(Math.random() * 4)],
-      agent: 'system',
-      message: `模拟日志更新 - ${new Date().toLocaleTimeString('zh-CN')}`
-    }
-    logs.value.push(newLog)
-    
-    // 保持最多100条日志
-    if (logs.value.length > 100) {
-      logs.value.shift()
+// 实时日志监控相关
+let eventSource = null
+
+// 启动实时日志监控
+const startRealTimeLogs = () => {
+  try {
+    // 关闭之前的连接
+    if (eventSource) {
+      eventSource.close()
     }
     
-    // 自动滚动到底部
-    if (autoScroll.value) {
-      nextTick(() => {
-        scrollToBottom()
-      })
+    // 创建新的SSE连接
+    connectionStatus.value = 'connecting'
+    eventSource = new EventSource('/logs/stream_logs')
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        
+        if (data.error) {
+          console.error('日志流错误:', data.error)
+          return
+        }
+        
+        // 处理心跳消息
+        if (data.heartbeat) {
+          return
+        }
+        
+        // 添加新日志
+        logs.value.push(data)
+        
+        // 更新统计数据
+        updateStatistics()
+        
+        // 保持最多1000条日志
+        if (logs.value.length > 1000) {
+          logs.value.splice(0, logs.value.length - 1000)
+        }
+        
+        // 自动滚动到底部
+        if (autoScroll.value) {
+          nextTick(() => {
+            scrollToBottom()
+          })
+        }
+      } catch (e) {
+        console.error('解析日志数据失败:', e)
+      }
     }
-  }, 3000)
+    
+    eventSource.onerror = (error) => {
+      console.error('SSE连接错误:', error)
+      connectionStatus.value = 'error'
+      
+      // 检查连接状态
+      if (eventSource.readyState === EventSource.CLOSED) {
+        // 立即重连
+        setTimeout(() => {
+          startRealTimeLogs()
+        }, 1000)
+      } else if (eventSource.readyState === EventSource.CONNECTING) {
+        connectionStatus.value = 'connecting'
+      } else {
+        // 等待一段时间后重连
+        setTimeout(() => {
+          if (eventSource && eventSource.readyState !== EventSource.OPEN) {
+            startRealTimeLogs()
+          }
+        }, 3000)
+      }
+    }
+    
+    eventSource.onopen = () => {
+      connectionStatus.value = 'connected'
+      ElMessage.success('实时日志监控已启动')
+    }
+    
+    eventSource.onclose = () => {
+      connectionStatus.value = 'disconnected'
+    }
+    
+  } catch (error) {
+    console.error('启动实时日志失败:', error)
+  }
 }
 
-// 页面加载时启动模拟日志
-onMounted(() => {
-  startMockLogs()
+// 停止实时日志监控
+const stopRealTimeLogs = () => {
+  if (eventSource) {
+    eventSource.close()
+    eventSource = null
+  }
+}
+
+// 加载初始日志数据
+const loadInitialLogs = async () => {
+  try {
+    const response = await fetch('/logs/get_logs')
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+    
+    const data = await response.json()
+    
+    if (data.success) {
+      logs.value = data.logs
+      // 更新统计数据
+      updateStatistics()
+    } else {
+      console.error('加载日志失败:', data.error)
+      ElMessage.error(`加载日志失败: ${data.error}`)
+    }
+  } catch (error) {
+    console.error('请求日志失败:', error)
+    ElMessage.error(`请求日志失败: ${error.message}`)
+    
+    // 如果是网络错误，尝试重试
+    if (error.name === 'TypeError' || error.message.includes('fetch')) {
+      setTimeout(() => {
+        loadInitialLogs()
+      }, 3000)
+    }
+  }
+}
+
+// 清空日志（调用后端API）
+const handleClearLogs = async () => {
+  try {
+    const confirmed = await ElMessageBox.confirm(
+      '确定要清空所有日志内容吗？此操作不可恢复。',
+      '确认清空',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    if (confirmed) {
+      const response = await fetch('/logs/clear_logs', {
+        method: 'POST'
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        logs.value = []
+        // 重置统计数据
+        updateStatistics()
+        ElMessage.success('日志内容已清空')
+      } else {
+        ElMessage.error(data.error || '清空失败')
+      }
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('清空日志失败')
+    }
+  }
+}
+
+// 页面加载时启动真实日志监控
+onMounted(async () => {
+  await loadInitialLogs()
+  startRealTimeLogs()
+})
+
+// 页面卸载时清理连接
+onUnmounted(() => {
+  stopRealTimeLogs()
 })
 </script>
 
@@ -578,6 +758,97 @@ onMounted(() => {
   color: #409eff;
 }
 
+.monitor-title .connection-status {
+  margin-left: 16px;
+}
+
+.monitor-title .connection-status .el-tag {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  height: 24px;
+  line-height: 24px;
+  color: white !important;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+/* 自定义连接状态标签的背景色 */
+.monitor-title .connection-status .el-tag--success {
+  background: linear-gradient(135deg, #67c23a 0%, #4caf50 100%) !important;
+  border-color: #67c23a !important;
+}
+
+.monitor-title .connection-status .el-tag--warning {
+  background: linear-gradient(135deg, #e6a23c 0%, #ff9800 100%) !important;
+  border-color: #e6a23c !important;
+}
+
+.monitor-title .connection-status .el-tag--danger {
+  background: linear-gradient(135deg, #f56c6c 0%, #e74c3c 100%) !important;
+  border-color: #f56c6c !important;
+}
+
+.monitor-title .connection-status .el-tag--info {
+  background: linear-gradient(135deg, #909399 0%, #607d8b 100%) !important;
+  border-color: #909399 !important;
+}
+
+/* 确保图标也是白色 */
+.monitor-title .connection-status .el-tag .el-icon {
+  color: white !important;
+}
+
+/* 统一所有图标大小和间距，并确保垂直居中 */
+.monitor-title .connection-status .el-tag .el-icon--left {
+  margin-right: 4px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+}
+
+.monitor-title .connection-status .el-tag .el-icon--left .el-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+}
+
+/* 自定义Loading动画 - 视觉平衡 */
+.monitor-title .connection-status .el-tag .custom-loading {
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.monitor-title .connection-status .el-tag .loading-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .monitor-controls {
   display: flex;
   align-items: center;
@@ -740,11 +1011,35 @@ onMounted(() => {
   word-break: break-word;
 }
 
-.scroll-to-bottom {
+/* 滚动控制按钮样式 */
+.scroll-controls {
   position: absolute;
   bottom: 20px;
   right: 20px;
   z-index: 10;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+}
+
+.scroll-to-top {
+  box-shadow: 0 4px 12px rgba(144, 147, 153, 0.3);
+  transition: all 0.3s ease;
+}
+
+.scroll-to-top:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(144, 147, 153, 0.4);
+}
+
+.scroll-to-bottom {
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.scroll-to-bottom:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.4);
 }
 
 /* 自定义日志级别标签样式 */
