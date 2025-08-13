@@ -311,25 +311,59 @@ def get_generated_file_summary():
             'modified_at': modified_at
         }
 
-        # 保存汇总数据到数据库
+        # 保存汇总数据到数据库（防重复插入）
         try:
             cur = mysql.connection.cursor()
+            
+            # 先检查是否已存在相同文件名的记录
             cur.execute("""
-                INSERT INTO ai_test_generation_history 
-                (case_types, priority_distribution, total_cases, functional_test_count, 
-                 api_test_count, ui_auto_test_count, estimated_file_size, generated_at, filename)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                json.dumps(db_case_types),  # 存储用户选择的测试类型，而不是Excel中的实际分布
-                json.dumps(priority_counts),
-                total_cases,
-                category_counts.get('功能测试', 0),
-                category_counts.get('接口测试', 0),
-                category_counts.get('UI自动化测试', 0),
-                file_stat.st_size,
-                datetime.now(),
-                filename
-            ))
+                SELECT id FROM ai_test_generation_history 
+                WHERE filename = %s
+                LIMIT 1
+            """, (filename,))
+            
+            existing_record = cur.fetchone()
+            
+            if existing_record:
+                # 如果已存在，则更新现有记录
+                cur.execute("""
+                    UPDATE ai_test_generation_history 
+                    SET case_types = %s, priority_distribution = %s, total_cases = %s,
+                        functional_test_count = %s, api_test_count = %s, ui_auto_test_count = %s,
+                        estimated_file_size = %s, generated_at = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE filename = %s
+                """, (
+                    json.dumps(db_case_types),
+                    json.dumps(priority_counts),
+                    total_cases,
+                    category_counts.get('功能测试', 0),
+                    category_counts.get('接口测试', 0),
+                    category_counts.get('UI自动化测试', 0),
+                    file_stat.st_size,
+                    datetime.now(),
+                    filename
+                ))
+                print(f"更新现有记录: {filename}")
+            else:
+                # 如果不存在，则插入新记录
+                cur.execute("""
+                    INSERT INTO ai_test_generation_history 
+                    (case_types, priority_distribution, total_cases, functional_test_count, 
+                     api_test_count, ui_auto_test_count, estimated_file_size, generated_at, filename)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    json.dumps(db_case_types),
+                    json.dumps(priority_counts),
+                    total_cases,
+                    category_counts.get('功能测试', 0),
+                    category_counts.get('接口测试', 0),
+                    category_counts.get('UI自动化测试', 0),
+                    file_stat.st_size,
+                    datetime.now(),
+                    filename
+                ))
+                print(f"插入新记录: {filename}")
+            
             mysql.connection.commit()
             cur.close()
         except Exception as db_error:

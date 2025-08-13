@@ -282,12 +282,14 @@ async function pollForResult(name) {
       if (res.ok) {
         const data = await res.json()
         if (data.success) {
+          // 轮询检测到文件完成，更新前端显示
           summary.value = data.summary
           loading.value = false
           clearGenerateState()
           window.clearInterval(pollTimer)
           pollTimer = null
-          notifyGenerated(fullFileName)
+          // 移除通知，轮询只用于判断文件是否生成完成
+          // 注意：这里不会重复插入数据库，因为后端有防重复机制
         }
       } else {
         // 404 未生成，继续轮询；其他错误也继续
@@ -444,7 +446,9 @@ async function handleGenerate() {
     
     if (generateResult.success) {
       const summaryFile = generateResult.output_file || outputFile.value
-      await fetchSummary(summaryFile, caseType.value)  // 传递用户选择的测试类型
+      // 生成成功后立即获取汇总信息并存入数据库
+      // 这是确保数据存入的兜底机制，即使用户离开页面也能完成
+      await fetchSummary(summaryFile, caseType.value)
       loading.value = false
       clearGenerateState()
       notifyGenerated(outputFile.value) // 生成成功后的全局通知

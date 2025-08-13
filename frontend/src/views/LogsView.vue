@@ -20,7 +20,6 @@
               clearable
               style="width: 120px"
             >
-              <el-option label="全部" value="" />
               <el-option label="INFO" value="INFO" />
               <el-option label="WARNING" value="WARNING" />
               <el-option label="ERROR" value="ERROR" />
@@ -358,8 +357,7 @@ const handleSearch = async () => {
     
     if (data.success) {
       logs.value = data.logs
-      // 更新统计数据
-      updateStatistics()
+      // 搜索时不更新统计数据，保持显示所有日志的统计
       ElMessage.success(`找到 ${data.logs.length} 条符合条件的日志`)
     } else {
       ElMessage.error(data.error || '搜索失败')
@@ -375,9 +373,9 @@ const handleReset = () => {
   filterForm.level = ''
   filterForm.timeRange = null
   filterForm.keyword = ''
-  // 重新加载所有日志并更新统计
+  // 重新加载所有日志，统计数据会显示所有日志的统计
   loadInitialLogs()
-  ElMessage.info('筛选条件已重置')
+  ElMessage.info('筛选条件已重置，日志级别已重置为"全部"')
 }
 
 
@@ -453,12 +451,12 @@ const startRealTimeLogs = () => {
         // 添加新日志
         logs.value.push(data)
         
-        // 更新统计数据
+        // 更新统计数据（反映所有日志的统计）
         updateStatistics()
         
-        // 保持最多1000条日志
-        if (logs.value.length > 1000) {
-          logs.value.splice(0, logs.value.length - 1000)
+        // 保持最多5000条日志
+        if (logs.value.length > 5000) {
+          logs.value.splice(0, logs.value.length - 5000)
         }
         
         // 自动滚动到底部
@@ -529,7 +527,7 @@ const loadInitialLogs = async () => {
     
     if (data.success) {
       logs.value = data.logs
-      // 更新统计数据
+      // 加载初始日志后，更新统计数据（显示所有日志的统计）
       updateStatistics()
     } else {
       console.error('加载日志失败:', data.error)
@@ -569,7 +567,7 @@ const handleClearLogs = async () => {
       
       if (data.success) {
         logs.value = []
-        // 重置统计数据
+        // 清空日志后，统计数据应该为0
         updateStatistics()
         ElMessage.success('日志内容已清空')
       } else {
