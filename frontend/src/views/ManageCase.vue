@@ -212,6 +212,7 @@
                 class="testcase-table"
                 :row-class-name="tableRowClassName"
                 @row-click="handleRowClick"
+                empty-text=""
               >
                 <el-table-column prop="case_id" label="用例ID" width="140" class-name="case-id-column">
                   <template #default="scope">
@@ -254,18 +255,28 @@
                   </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="120" align="center">
+                <el-table-column label="操作" width="180" align="center">
                   <template #default="scope">
-                    <el-button
-                      type="primary"
-                      size="small"
-                      class="view-btn"
-                      @click.stop="viewTestCase(scope.row)"
-                    >
-                      查看用例
-                    </el-button>
-              </template>
-            </el-table-column>
+                    <div class="action-buttons">
+                      <el-button
+                        type="primary"
+                        size="small"
+                        class="view-btn"
+                        @click.stop="viewTestCase(scope.row)"
+                      >
+                        查看用例
+                      </el-button>
+                      <el-button
+                        type="danger"
+                        size="small"
+                        class="testcase-delete-btn"
+                        @click.stop="deleteTestCase(scope.row)"
+                      >
+                        删除用例
+                      </el-button>
+                    </div>
+                  </template>
+                </el-table-column>
           </el-table>
 
               <!-- 空状态 -->
@@ -419,7 +430,8 @@ import {
   updateProject,
   deleteProject,
   getProjectTestcases,
-  updateTestCaseStatus
+  updateTestCaseStatus,
+  deleteTestCase
 } from '@/api/case.js';
 
 export default {
@@ -708,6 +720,46 @@ export default {
         setTimeout(() => {
           this.isMarkingComplete = false;
         }, 1000);
+      }
+    },
+
+    // 删除测试用例
+    async deleteTestCase(testCase) {
+      try {
+        await this.$confirm(`确认删除测试用例 "${testCase.case_id}" 吗？此操作不可恢复`, '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        });
+
+        this.loading = true;
+        
+        // 调用后端删除API
+        const response = await deleteTestCase(testCase.id);
+        
+        if (response && response.message) {
+          // 删除成功后从本地数组中移除该用例
+          this.testCases = this.testCases.filter(tc => tc.id !== testCase.id);
+          
+          // 如果当前查看的用例被删除，关闭详情弹窗
+          if (this.currentTestCase && this.currentTestCase.id === testCase.id) {
+            this.detailDialogVisible = false;
+            this.currentTestCase = null;
+            this.currentTestCaseIndex = -1;
+          }
+          
+          this.$message.success(response.message);
+        } else {
+          this.$message.success('用例删除成功');
+        }
+        
+      } catch (err) {
+        if (err !== 'cancel') {
+          const errorMsg = err.response?.data?.error || err.message || '删除用例失败';
+          this.$message.error(errorMsg);
+        }
+      } finally {
+        this.loading = false;
       }
     },
 
@@ -1031,11 +1083,20 @@ export default {
 }
 
 .delete-btn {
-  color: #ef4444;
+  color: #ef4444 !important;
 }
 
 .delete-btn:hover {
-  background: #fef2f2;
+  background: #fef2f2 !important;
+}
+
+/* 使用深度选择器确保样式生效 */
+:deep(.action-btn.delete-btn) {
+  color: #ef4444 !important;
+}
+
+:deep(.action-btn.delete-btn:hover) {
+  background: #fef2f2 !important;
 }
 
 /* 项目底部 */
@@ -1518,6 +1579,40 @@ export default {
   font-size: 12px;
   font-weight: 500;
   margin: 0 auto;
+}
+
+/* 操作按钮容器样式 */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 删除按钮样式 */
+.testcase-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+.testcase-delete-btn:hover {
+  background-color: #b91c1c !important;
+  border-color: #b91c1c !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.testcase-delete-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
 }
 
 /* 空状态样式 */

@@ -1,50 +1,56 @@
 {
   "test_approach": {
     "methodology": [
-      "功能测试",
-      "安全测试",
-      "兼容性测试",
-      "可用性测试"
+      "功能测试：验证账号密码登录、验证码系统、用户注册和密码重置等功能是否符合需求",
+      "安全测试：检查HTTPS传输、密码存储加密、防CSRF/XSS攻击等安全措施",
+      "性能测试：评估登录响应时间、并发处理能力和验证码生成速度",
+      "兼容性测试：验证主流浏览器和移动设备的适配情况",
+      "可用性测试：评估用户界面友好性和多语言支持"
     ],
     "tools": [
       "Selenium",
       "JMeter",
-      "Postman",
-      "Owasp ZAP",
-      "BrowserStack"
+      "OWASP ZAP",
+      "Burp Suite",
+      "Postman"
     ],
     "frameworks": [
+      "TestNG",
       "JUnit",
-      "TestNG"
+      "Cucumber"
     ]
   },
   "coverage_matrix": [
     {
-      "feature": "用户通过已注册的账号和密码进行系统登录，账号支持手机号、电子邮箱或用户名格式",
+      "feature": "账号密码登录功能，支持手机号、电子邮箱和用户名格式",
       "test_type": "功能测试"
     },
     {
-      "feature": "密码要求长度8-20位，必须包含字母和数字，可选支持特殊字符",
+      "feature": "密码要求包含字母和数字，长度8-20位",
+      "test_type": "功能测试、安全测试"
+    },
+    {
+      "feature": "连续5次登录失败后锁定账号30分钟",
+      "test_type": "功能测试、安全测试"
+    },
+    {
+      "feature": "图形验证码功能，4-6位字母数字混合，60秒有效期",
+      "test_type": "功能测试、安全测试"
+    },
+    {
+      "feature": "短信验证码功能，6位数字，5分钟有效期",
+      "test_type": "功能测试、安全测试"
+    },
+    {
+      "feature": "用户注册流程，包括手机号/邮箱验证和密码设置",
       "test_type": "功能测试"
     },
     {
-      "feature": "连续5次登录失败后锁定账号30分钟，并显示剩余尝试次数",
-      "test_type": "功能测试"
+      "feature": "密码重置流程，要求新密码与最近3次使用过的密码不同",
+      "test_type": "功能测试、安全测试"
     },
     {
-      "feature": "登录页面默认显示图形验证码，具有防机器识别措施，60秒有效期，3次失败后刷新",
-      "test_type": "功能测试, 安全测试"
-    },
-    {
-      "feature": "用户注册流程包括输入手机号/邮箱+获取验证码、验证验证码、设置密码（需二次确认）及阅读并同意用户协议",
-      "test_type": "功能测试, 安全测试"
-    },
-    {
-      "feature": "密码重置流程包括输入注册账号、获取验证码并验证、设置新密码（需二次确认），强制要求新密码与最近3次使用过的密码不同",
-      "test_type": "功能测试, 安全测试"
-    },
-    {
-      "feature": "HTTPS传输以确保数据安全",
+      "feature": "HTTPS传输",
       "test_type": "安全测试"
     },
     {
@@ -56,7 +62,7 @@
       "test_type": "安全测试"
     },
     {
-      "feature": "实施防CSRF、XSS攻击措施",
+      "feature": "防CSRF、XSS攻击措施",
       "test_type": "安全测试"
     },
     {
@@ -72,53 +78,44 @@
       "test_type": "性能测试"
     },
     {
-      "feature": "支持主流浏览器（Chrome, Firefox, Safari, Edge）",
+      "feature": "支持主流浏览器和移动端适配",
       "test_type": "兼容性测试"
     },
     {
-      "feature": "移动端适配（iOS/Android）",
-      "test_type": "兼容性测试, 可用性测试"
-    },
-    {
       "feature": "国际化支持（多语言、多时区）",
-      "test_type": "兼容性测试, 可用性测试"
+      "test_type": "可用性测试"
     }
   ],
   "priorities": [
     {
       "level": "P0",
-      "description": "用户通过已注册的账号和密码进行系统登录，账号支持手机号、电子邮箱或用户名格式; 密码要求长度8-20位，必须包含字母和数字，可选支持特殊字符; HTTPS传输以确保数据安全; 密码存储使用bcrypt/PBKDF2算法; 敏感操作需二次验证; 实施防CSRF、XSS攻击措施; 登录响应时间<1秒（95%请求）; 支持1000并发登录请求"
+      "description": "账号密码登录功能、连续5次登录失败后锁定账号30分钟、HTTPS传输、密码存储使用bcrypt/PBKDF2算法"
     },
     {
       "level": "P1",
-      "description": "连续5次登录失败后锁定账号30分钟，并显示剩余尝试次数; 登录页面默认显示图形验证码，具有防机器识别措施，60秒有效期，3次失败后刷新; 用户注册流程包括输入手机号/邮箱+获取验证码、验证验证码、设置密码（需二次确认）及阅读并同意用户协议; 密码重置流程包括输入注册账号、获取验证码并验证、设置新密码（需二次确认），强制要求新密码与最近3次使用过的密码不同"
+      "description": "图形验证码功能、短信验证码功能、用户注册流程、密码重置流程、防CSRF/XSS攻击措施"
     },
     {
       "level": "P2",
-      "description": "验证码生成时间<200ms; 支持主流浏览器（Chrome, Firefox, Safari, Edge）"
+      "description": "登录响应时间<1秒、支持1000并发登录请求、验证码生成时间<200ms"
     },
     {
       "level": "P3",
-      "description": "移动端适配（iOS/Android）"
-    },
-    {
-      "level": "P4",
-      "description": "国际化支持（多语言、多时区）"
+      "description": "支持主流浏览器和移动端适配、国际化支持（多语言、多时区）"
     }
   ],
   "resource_estimation": {
-    "time": "6周",
-    "personnel": "1名项目经理，2名QA工程师，1名安全专家",
+    "time": "3周",
+    "personnel": "2名测试工程师、1名安全测试工程师、1名性能测试工程师",
     "tools": [
-      "Selenium",
+      "Selenium WebDriver",
       "JMeter",
-      "Postman",
-      "Owasp ZAP",
+      "OWASP ZAP",
       "BrowserStack"
     ],
     "additional_resources": [
-      "云服务器资源",
-      "虚拟机环境"
+      "多台测试设备（不同浏览器和移动设备）",
+      "测试服务器"
     ]
   }
 }

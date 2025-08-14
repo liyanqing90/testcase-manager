@@ -82,4 +82,75 @@ def update_test_case_status(test_case_id):
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500
+
+@test_case_bp.route('/<int:test_case_id>', methods=['DELETE'])
+def delete_test_case(test_case_id):
+    """删除测试用例"""
+    try:
+        cur = mysql.connection.cursor()
+        
+        # 1. 先查询测试用例信息，获取project_id
+        cur.execute("""
+            SELECT id, case_id, project_id, title 
+            FROM test_cases 
+            WHERE id = %s
+        """, (test_case_id,))
+        
+        test_case = cur.fetchone()
+        if not test_case:
+            cur.close()
+            return jsonify({'error': '测试用例不存在'}), 404
+        
+        # 正确访问查询结果字段（字典格式）
+        case_id = test_case['case_id']
+        project_id = test_case['project_id']
+        title = test_case['title']
+        
+        # 检查project_id是否为空
+        if project_id is None:
+            cur.close()
+            return jsonify({'error': '测试用例缺少项目ID信息'}), 400
+        
+        # 2. 删除project_cases表中的关联记录
+        cur.execute("""
+            DELETE FROM project_cases 
+            WHERE project_id = %s AND test_case_id = %s
+        """, (project_id, test_case_id))
+        
+        project_cases_deleted = cur.rowcount
+        
+        # 3. 删除test_cases表中的测试用例记录
+        cur.execute("""
+            DELETE FROM test_cases 
+            WHERE id = %s
+        """, (test_case_id,))
+        
+        test_cases_deleted = cur.rowcount
+        
+        # 提交事务
+        mysql.connection.commit()
+        cur.close()
+        
+        return jsonify({
+            'message': '测试用例删除成功',
+            'deleted_case_id': case_id,
+            'deleted_title': title,
+            'project_id': project_id,
+            'project_cases_deleted': project_cases_deleted,
+            'test_cases_deleted': test_cases_deleted
+        })
+        
+    except Exception as e:
+        # 回滚事务
+        try:
+            mysql.connection.rollback()
+        except:
+            pass
+        
+        # 返回错误信息
+        error_msg = str(e)
+        return jsonify({
+            'error': f'删除测试用例失败: {error_msg}',
+            'test_case_id': test_case_id
+        }), 500 

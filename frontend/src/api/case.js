@@ -52,8 +52,8 @@ export function updateTestCase(projectId, testcaseId, testcase) {
     .then(response => response.data);
 }
 
-export function deleteTestCase(projectId, testcaseId) {
-  return axios.delete(`/project/${projectId}/testcase/${testcaseId}`)
+export function deleteTestCase(testcaseId) {
+  return axios.delete(`/test_case/${testcaseId}`)
     .then(response => response.data);
 }
 
