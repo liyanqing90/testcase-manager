@@ -12,8 +12,8 @@ const historyFallbackPlugin = () => {
       server.middlewares.use((req, res, next) => {
         // 如果是API请求，直接跳过
         if (req.url.startsWith('/logs/') || 
-            req.url.startsWith('/upload_case/') || 
-            req.url.startsWith('/import_case/') || 
+            req.url.startsWith('/upload_case') || 
+            req.url.startsWith('/import_case') || 
             req.url.startsWith('/project/') || 
             req.url.startsWith('/test_case/') || 
             req.url.startsWith('/ai_generate/')) {
