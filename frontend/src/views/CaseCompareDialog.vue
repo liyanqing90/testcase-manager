@@ -23,7 +23,7 @@
                 <div class="basic-info-row">
                   <div class="info-item">
                     <span class="info-label">用例ID:</span>
-                    <span class="info-value">{{ caseA.case_id }}</span>
+                    <span class="info-value case-id-value">{{ caseA.case_id }}</span>
                   </div>
                   <div class="info-item">
                     <span class="info-label">优先级:</span>
@@ -61,7 +61,7 @@
                 <div class="basic-info-row">
                   <div class="info-item">
                     <span class="info-label">用例ID:</span>
-                    <span class="info-value">{{ caseB.case_id }}</span>
+                    <span class="info-value case-id-value">{{ caseB.case_id }}</span>
                   </div>
                   <div class="info-item">
                     <span class="info-label">优先级:</span>
@@ -102,7 +102,7 @@
                 <div class="basic-info-row">
                   <div class="info-item">
                     <span class="info-label">用例ID:</span>
-                    <span class="info-value">{{ finalCase.case_id }}</span>
+                    <span class="info-value case-id-value">{{ finalCase.case_id }}</span>
                   </div>
                   <div class="info-item">
                     <span class="info-label">优先级:</span>
@@ -198,9 +198,6 @@ const finalCase = computed(() => {
 
 function getPriorityType(priority) {
   const priorityMap = {
-    '高': 'danger',
-    '中': 'warning',
-    '低': 'info',
     'P0': 'danger',
     'P1': 'warning',
     'P2': 'info',
@@ -229,9 +226,19 @@ function getStatusType(status) {
 }
 function getStatusDisplay(status) {
   if (!status) return '未设置';
-  if (status === 'Draft') return '未完成';
-  if (status === 'success') return '已完成';
-  return status;
+  
+  const statusDisplayMap = {
+    'Draft': '未完成',
+    'draft': '未完成',
+    'success': '已完成',
+    'failed': '失败',
+    'blocked': '阻塞',
+    'skipped': '跳过',
+    'pending': '待执行',
+    'running': '执行中'
+  };
+  
+  return statusDisplayMap[status] || status;
 }
 </script>
 
@@ -474,6 +481,14 @@ function getStatusDisplay(status) {
   font-weight: 500;
 }
 
+/* 用例ID特殊样式 - 使用圆润字体 */
+.case-id-value {
+  font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #1f2937;
+}
+
 /* 标签样式 */
 .priority-tag, .status-tag {
   font-weight: 500;
@@ -509,6 +524,18 @@ function getStatusDisplay(status) {
 .status-tag.el-tag--success {
   background-color: #047857 !important;
   border-color: #047857 !important;
+  color: white !important;
+}
+
+.status-tag.el-tag--danger {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+.status-tag.el-tag--warning {
+  background-color: #d97706 !important;
+  border-color: #d97706 !important;
   color: white !important;
 }
 

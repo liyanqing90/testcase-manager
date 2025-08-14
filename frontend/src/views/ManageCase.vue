@@ -176,6 +176,12 @@
               <p class="project-info">项目：{{ currentProject.name }}</p>
             </div>
             <div class="header-right">
+              <el-button type="primary" class="add-btn" @click="openAddTestCaseDialog">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                添加用例
+              </el-button>
               <el-button type="primary" class="upload-btn" @click="uploadTestCases">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -314,7 +320,7 @@
                 <div class="basic-info-row">
                   <div class="info-item">
                     <span class="info-label">用例ID:</span>
-                    <span class="info-value">{{ currentTestCase.case_id }}</span>
+                    <span class="info-value case-id-value">{{ currentTestCase.case_id }}</span>
                   </div>
                   <div class="info-item">
                     <span class="info-label">优先级:</span>
@@ -368,11 +374,11 @@
                    :class="{ 'marking': isMarkingComplete }"
                    :style="{ pointerEvents: isMarkingComplete ? 'none' : 'auto' }"
               >
-                <div class="mark-icon" :class="{ 'completed': currentTestCase && (currentTestCase.status === '已完成' || currentTestCase.status === 'success') && !isMarkingComplete }">
+                <div class="mark-icon" :class="{ 'completed': currentTestCase && (currentTestCase.status === 'success') && !isMarkingComplete }">
                   <svg v-if="isMarkingComplete" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 2V6M12 18V22M4.93 4.93L7.76 7.76M16.24 16.24L19.07 19.07M2 12H6M18 12H22M4.93 19.07L7.76 16.24M16.24 7.76L19.07 4.93" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
-                  <svg v-else-if="currentTestCase && (currentTestCase.status === '已完成' || currentTestCase.status === 'success')" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg v-else-if="currentTestCase && (currentTestCase.status === 'success')" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
                   <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -380,7 +386,7 @@
                   </svg>
                 </div>
                 <span class="mark-text">
-                  {{ isMarkingComplete ? '处理中...' : (currentTestCase && (currentTestCase.status === '已完成' || currentTestCase.status === 'success') ? '已完成' : '标记完成') }}
+                  {{ isMarkingComplete ? '处理中...' : (currentTestCase && (currentTestCase.status === 'success') ? '已完成' : '标记完成') }}
                 </span>
               </div>
             </div>
@@ -420,6 +426,120 @@
         </el-dialog>
       </div>
     </el-drawer>
+
+    <!-- 添加测试用例弹窗 -->
+    <el-dialog
+      v-model="addTestCaseDialogVisible"
+      width="800px"
+      :show-close="true"
+      :close-on-click-modal="false"
+      class="add-testcase-dialog"
+      @close="closeAddTestCaseDialog"
+    >
+      <template #header>
+        <div class="add-dialog-header">
+          <h3 class="add-dialog-title">添加测试用例</h3>
+        </div>
+      </template>
+
+      <el-form 
+        :model="addTestCaseForm" 
+        :rules="addTestCaseRules" 
+        ref="addTestCaseFormRef" 
+        label-width="120px"
+        class="add-testcase-form"
+      >
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="用例ID" prop="case_id">
+              <el-input v-model="addTestCaseForm.case_id" placeholder="请输入用例ID" class="case-id-input"></el-input>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="优先级" prop="priority">
+              <el-select v-model="addTestCaseForm.priority" placeholder="请选择优先级" style="width: 100%">
+                <el-option label="P0" value="P0"></el-option>
+                <el-option label="P1" value="P1"></el-option>
+                <el-option label="P2" value="P2"></el-option>
+                <el-option label="P3" value="P3"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="分类" prop="category">
+              <el-select v-model="addTestCaseForm.category" placeholder="请选择分类" style="width: 100%">
+                <el-option label="功能测试" value="功能测试"></el-option>
+                <el-option label="接口测试" value="接口测试" disabled></el-option>
+                <el-option label="UI自动化测试" value="UI自动化测试" disabled></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-select v-model="addTestCaseForm.status" placeholder="请选择状态" style="width: 100%">
+                <el-option label="未完成" value="draft"></el-option>
+                <el-option label="待执行" value="pending"></el-option>
+                <el-option label="执行中" value="running"></el-option>
+                <el-option label="已完成" value="success"></el-option>
+                <el-option label="失败" value="failed"></el-option>
+                <el-option label="阻塞" value="blocked"></el-option>
+                <el-option label="跳过" value="skipped"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="用例标题" prop="title">
+          <el-input v-model="addTestCaseForm.title" placeholder="请输入用例标题"></el-input>
+        </el-form-item>
+
+        <el-form-item label="用例描述" prop="description">
+          <el-input
+            v-model="addTestCaseForm.description"
+            type="textarea"
+            placeholder="请输入用例描述"
+            :rows="3">
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="前置条件" prop="preconditions">
+          <el-input
+            v-model="addTestCaseForm.preconditions"
+            type="textarea"
+            placeholder="请输入前置条件"
+            :rows="3">
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="操作步骤" prop="steps">
+          <el-input
+            v-model="addTestCaseForm.steps"
+            type="textarea"
+            placeholder="请输入操作步骤"
+            :rows="4">
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="预期结果" prop="expected_results">
+          <el-input
+            v-model="addTestCaseForm.expected_results"
+            type="textarea"
+            placeholder="请输入预期结果"
+            :rows="4">
+          </el-input>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <span class="add-dialog-footer">
+          <el-button @click="closeAddTestCaseDialog">取消</el-button>
+          <el-button type="primary" @click="submitAddTestCase">创建用例</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -431,7 +551,8 @@ import {
   deleteProject,
   getProjectTestcases,
   updateTestCaseStatus,
-  deleteTestCase
+  deleteTestCase,
+  addTestCase
 } from '@/api/case.js';
 
 export default {
@@ -464,7 +585,33 @@ export default {
       isMarkingComplete: false,  // 添加标记状态控制
       isNavigating: false,       // 添加导航状态控制
       testCaseSearchText: '',    // 用例搜索文本
-      filteredTestCases: []      // 过滤后的用例列表
+      filteredTestCases: [],     // 过滤后的用例列表
+      addTestCaseDialogVisible: false, // 添加用例弹窗显示状态
+      addTestCaseForm: {         // 添加用例表单数据
+        case_id: '',
+        title: '',
+        description: '',
+        preconditions: '',
+        steps: '',
+        expected_results: '',
+        priority: '',
+        category: '功能测试',
+        status: 'draft'
+      },
+      addTestCaseRules: {        // 添加用例表单验证规则
+        case_id: [
+          { required: true, message: '请输入用例ID', trigger: 'blur' }
+        ],
+        title: [
+          { required: true, message: '请输入用例标题', trigger: 'blur' }
+        ],
+        priority: [
+          { required: true, message: '请选择优先级', trigger: 'change' }
+        ],
+        category: [
+          { required: true, message: '请选择分类', trigger: 'change' }
+        ]
+      }
     };
   },
   mounted() {
@@ -776,9 +923,6 @@ export default {
     // 获取优先级标签类型
     getPriorityType(priority) {
       const priorityMap = {
-        '高': 'danger',
-        '中': 'warning',
-        '低': 'info',
         'P0': 'danger',
         'P1': 'warning',
         'P2': 'info',
@@ -811,9 +955,19 @@ export default {
     // 获取状态显示文本
     getStatusDisplay(status) {
       if (!status) return '未设置';
-      if (status === 'Draft') return '未完成';
-      if (status === 'success') return '已完成';
-      return status;
+      
+      const statusDisplayMap = {
+        'Draft': '未完成',
+        'draft': '未完成',
+        'success': '已完成',
+        'failed': '失败',
+        'blocked': '阻塞',
+        'skipped': '跳过',
+        'pending': '待执行',
+        'running': '执行中'
+      };
+      
+      return statusDisplayMap[status] || status;
     },
 
     uploadTestCases() {
@@ -905,6 +1059,54 @@ export default {
         description: '',
         maintainers: ''
       };
+    },
+
+    openAddTestCaseDialog() {
+      this.addTestCaseDialogVisible = true;
+      this.addTestCaseForm = {
+        case_id: '',
+        title: '',
+        description: '',
+        preconditions: '',
+        steps: '',
+        expected_results: '',
+        priority: 'P2',
+        category: '功能测试',
+        status: 'draft'
+      };
+    },
+
+    closeAddTestCaseDialog() {
+      this.addTestCaseDialogVisible = false;
+    },
+
+    submitAddTestCase() {
+      this.$refs.addTestCaseFormRef.validate(async (valid) => {
+        if (valid) {
+          try {
+            const projectId = this.currentProject.id;
+            // 准备用例数据
+            const testcaseData = {
+              case_id: this.addTestCaseForm.case_id,
+              title: this.addTestCaseForm.title,
+              description: this.addTestCaseForm.description,
+              preconditions: this.addTestCaseForm.preconditions,
+              steps: this.addTestCaseForm.steps,
+              expected_results: this.addTestCaseForm.expected_results,
+              priority: this.addTestCaseForm.priority,
+              category: this.addTestCaseForm.category,
+              status: this.addTestCaseForm.status
+            };
+            
+            const data = await addTestCase(projectId, testcaseData);
+            this.$message.success('用例创建成功');
+            this.addTestCaseDialogVisible = false;
+            await this.loadTestCases(projectId);
+          } catch (err) {
+            this.$message.error('创建用例失败: ' + (err.response?.data?.error || err.message));
+          }
+        }
+      });
     }
   }
 };
@@ -1420,6 +1622,21 @@ export default {
   color: #64748b;
 }
 
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-weight: 600;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.add-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 .upload-btn {
   display: flex;
   align-items: center;
@@ -1490,13 +1707,14 @@ export default {
 }
 
 .case-id-text {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', 'Segoe UI', 'Roboto', sans-serif;
   font-size: 13px;
   color: #1f2937;
   background: #e5e7eb;
   padding: 6px 10px;
   border-radius: 6px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 /* 用例标题列样式 */
@@ -1560,6 +1778,18 @@ export default {
 .status-tag.el-tag--success {
   background-color: #047857 !important;
   border-color: #047857 !important;
+  color: white !important;
+}
+
+.status-tag.el-tag--danger {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+.status-tag.el-tag--warning {
+  background-color: #d97706 !important;
+  border-color: #d97706 !important;
   color: white !important;
 }
 
@@ -1746,6 +1976,32 @@ export default {
   color: #374151;
   font-size: 14px;
   font-weight: 500;
+}
+
+/* 用例ID特殊样式 - 使用圆润字体 */
+.case-id-value {
+  font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #1f2937;
+}
+
+/* 添加测试用例表单中的用例ID输入框样式 */
+.case-id-input :deep(.el-input__inner) {
+  font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* 分类选择器中置灰选项的样式 */
+.add-testcase-form :deep(.el-select .el-option.is-disabled) {
+  color: #c0c4cc !important;
+  background-color: #f5f7fa !important;
+  cursor: not-allowed;
+}
+
+.add-testcase-form :deep(.el-select .el-option.is-disabled:hover) {
+  background-color: #f5f7fa !important;
 }
 
 /* 确保所有表单项内容对齐 */
@@ -1965,5 +2221,56 @@ export default {
 /* 弹窗相对定位，确保标记按钮定位正确 */
 :deep(.testcase-detail-dialog) {
   position: relative;
+}
+
+/* 添加用例弹窗样式 */
+.add-testcase-dialog {
+  position: relative;
+}
+
+.add-dialog-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.add-dialog-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  line-height: 1.2;
+  padding: 0;
+}
+
+.add-testcase-form {
+  padding: 20px 0;
+}
+
+.add-testcase-form .el-form-item {
+  margin-bottom: 20px;
+}
+
+.add-testcase-form .el-input__wrapper,
+.add-testcase-form .el-textarea__inner {
+  border-radius: 6px;
+}
+
+.add-testcase-form .el-select {
+  width: 100%;
+}
+
+.add-dialog-footer {
+  text-align: right;
+  padding-top: 20px;
+}
+
+.add-dialog-footer .el-button {
+  margin-left: 12px;
 }
 </style>

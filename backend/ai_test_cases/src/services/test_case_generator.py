@@ -102,8 +102,8 @@ class TestCaseGenerator:
         """根据场景和优先级定义确定测试用例优先级"""
         scenario_priority = scenario.get('priority')
         if scenario_priority in priorities:
-            return priorities[scenario_priority].get('level', '中')
-        return '中'
+            return priorities[scenario_priority].get('level', 'P2')
+        return 'P2'
 
     def _generate_steps(self, test_type: Dict[str, Any], scenario: Dict[str, Any]) -> List[str]:
         """生成测试步骤"""

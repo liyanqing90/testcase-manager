@@ -524,9 +524,6 @@ function notifyGenerated(name) {
 // 修复：优先级标签类型映射
 function getPriorityType(priority) {
   const priorityMap = {
-    '高': 'danger',
-    '中': 'warning',
-    '低': 'info',
     'P0': 'danger',
     'P1': 'warning',
     'P2': 'info',

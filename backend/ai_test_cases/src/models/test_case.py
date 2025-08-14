@@ -29,8 +29,8 @@ class TestCase:
             raise ValueError("测试步骤必须是字符串列表")
         if not isinstance(self.expected_results, list) or not all(isinstance(x, str) for x in self.expected_results):
             raise ValueError("预期结果必须是字符串列表")
-        if not isinstance(self.priority, str) or self.priority not in ["高", "中", "低"]:
-            raise ValueError("优先级必须是'高'、'中'、'低'之一")
+        if not isinstance(self.priority, str) or self.priority not in ["P0", "P1", "P2", "P3"]:
+            raise ValueError("优先级必须是'P0'、'P1'、'P2'、'P3'之一")
         if not isinstance(self.category, str) or not self.category.strip():
             raise ValueError("类别不能为空且必须是字符串类型")
         if self.test_data is not None and not isinstance(self.test_data, dict):

@@ -514,9 +514,6 @@ export default {
     // 获取优先级标签类型
     getPriorityType(priority) {
       const priorityMap = {
-        '高': 'danger',
-        '中': 'warning',
-        '低': 'info',
         'P0': 'danger',
         'P1': 'warning',
         'P2': 'info',
@@ -549,9 +546,19 @@ export default {
     // 获取状态显示文本
     getStatusDisplay(status) {
       if (!status) return '未设置';
-      if (status === 'Draft') return '未完成';
-      if (status === 'success') return '已完成';
-      return status;
+      
+      const statusDisplayMap = {
+        'Draft': '未完成',
+        'draft': '未完成',
+        'success': '已完成',
+        'failed': '失败',
+        'blocked': '阻塞',
+        'skipped': '跳过',
+        'pending': '待执行',
+        'running': '执行中'
+      };
+      
+      return statusDisplayMap[status] || status;
     },
     
     /**
@@ -1065,6 +1072,18 @@ export default {
 .status-tag.el-tag--success {
   background-color: #047857 !important;
   border-color: #047857 !important;
+  color: white !important;
+}
+
+.status-tag.el-tag--danger {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+.status-tag.el-tag--warning {
+  background-color: #d97706 !important;
+  border-color: #d97706 !important;
   color: white !important;
 }
 

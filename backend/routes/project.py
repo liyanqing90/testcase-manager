@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from datetime import datetime
 from backend.app import mysql
 
 project_bp = Blueprint('project', __name__)
@@ -118,3 +119,109 @@ def get_project_testcases(project_id):
         return jsonify({'testcases': testcases})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@project_bp.route('/<int:project_id>/testcase', methods=['POST'])
+def add_test_case(project_id):
+    """添加测试用例到指定项目"""
+    try:
+        data = request.json
+        
+        # 验证必需字段
+        required_fields = ['case_id', 'title', 'priority', 'category', 'status']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'字段 {field} 不能为空'}), 400
+        
+        # 验证优先级值
+        valid_priorities = ['P0', 'P1', 'P2', 'P3']
+        if data['priority'] not in valid_priorities:
+            return jsonify({'error': '无效的优先级值'}), 400
+        
+        # 验证状态值
+        valid_statuses = ['success', 'failed', 'blocked', 'skipped', 'pending', 'running', 'draft']
+        if data['status'] not in valid_statuses:
+            return jsonify({'error': '无效的状态值'}), 400
+        
+        # 验证分类值
+        valid_categories = ['功能测试', '接口测试', 'UI自动化测试']
+        if data['category'] not in valid_categories:
+            return jsonify({'error': '无效的分类值'}), 400
+        
+        # 验证项目是否存在
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT id FROM projects WHERE id = %s", (project_id,))
+        project = cur.fetchone()
+        if not project:
+            cur.close()
+            return jsonify({'error': '项目不存在'}), 404
+        
+        # 检查同一项目内case_id是否重复
+        cur.execute("""
+            SELECT id FROM test_cases 
+            WHERE project_id = %s AND case_id = %s
+        """, (project_id, data['case_id']))
+        
+        if cur.fetchone():
+            cur.close()
+            return jsonify({'error': f'用例ID "{data["case_id"]}" 在当前项目中已存在'}), 400
+        
+        # 获取当前时间
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # 1. 插入test_cases表
+        cur.execute("""
+            INSERT INTO test_cases (
+                case_id, title, description, preconditions, steps, 
+                expected_results, priority, category, status, 
+                created_at, updated_at, created_by, last_updated_by, project_id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            data['case_id'],
+            data['title'],
+            data.get('description', ''),
+            data.get('preconditions', ''),
+            data.get('steps', ''),
+            data.get('expected_results', ''),
+            data['priority'],
+            data['category'],
+            data['status'],
+            current_time,
+            current_time,
+            '用户',  # created_by
+            '用户',  # last_updated_by
+            project_id
+        ))
+        
+        # 获取新插入的测试用例ID
+        test_case_id = cur.lastrowid
+        
+        # 2. 插入project_cases表建立关联关系
+        cur.execute("""
+            INSERT INTO project_cases (project_id, test_case_id) 
+            VALUES (%s, %s)
+        """, (project_id, test_case_id))
+        
+        # 提交事务
+        mysql.connection.commit()
+        cur.close()
+        
+        return jsonify({
+            'message': '测试用例添加成功',
+            'test_case_id': test_case_id,
+            'case_id': data['case_id'],
+            'title': data['title'],
+            'project_id': project_id
+        }), 201
+        
+    except Exception as e:
+        # 回滚事务
+        try:
+            mysql.connection.rollback()
+        except:
+            pass
+        
+        error_msg = str(e)
+        return jsonify({
+            'error': f'添加测试用例失败: {error_msg}',
+            'project_id': project_id
+        }), 500
