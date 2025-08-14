@@ -361,7 +361,7 @@ export default {
     onNewIdBlur(row) {
       // 输入框失焦时检查新ID是否重复
       if (row.new_ID && this.selectedProject) {
-        // 先检查是否与其他正在编辑的新ID重复
+        // 1. 先检查是否与其他正在编辑的新ID重复
         const duplicateNewId = this.cases.some(caseItem => {
           // 排除自己这一行，检查其他行是否有相同的新ID
           return caseItem !== row && caseItem.new_ID === row.new_ID;
@@ -371,10 +371,24 @@ export default {
           // 与其他正在编辑的新ID重复
           row.duplicate = true;
           row.duplicate_reason = '新ID重复';
-        } else {
-          // 检查数据库中是否重复
-          this.checkNewIdDuplicate(row);
+          return;
         }
+        
+        // 2. 检查新ID是否与当前文件中的原始ID重复
+        const duplicateWithOriginalId = this.cases.some(caseItem => {
+          // 检查新ID是否与任何原始ID相同
+          return caseItem.ID === row.new_ID;
+        });
+        
+        if (duplicateWithOriginalId) {
+          // 新ID与当前文件中的原始ID重复
+          row.duplicate = true;
+          row.duplicate_reason = '新ID重复';
+          return;
+        }
+        
+        // 3. 检查数据库中是否重复
+        this.checkNewIdDuplicate(row);
       }
     },
     
