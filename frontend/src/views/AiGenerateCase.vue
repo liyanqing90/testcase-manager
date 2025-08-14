@@ -389,7 +389,7 @@ async function handleGenerate() {
   
   // 显示生成开始提示
   ElMessageBox.alert(
-    'AI正在分析需求文档并生成测试用例，此过程可能需要5-15分钟，请耐心等待，期间请勿进行其他操作',
+    'AI正在分析需求文档并生成测试用例，此过程可能需要5-15分钟，请耐心等待。',
     '生成开始',
     {
       confirmButtonText: '我知道了',
@@ -677,16 +677,16 @@ async function fetchFileList() {
   z-index: 2;
 }
 .ai-generate-upload-card {
-  background: linear-gradient(135deg, #FFFFFF 60%, #38bdf8 100%);
+  background: linear-gradient(135deg, #FFFFFF 100%, #38bdf8 100%);
   box-shadow: 0 8px 32px 0 rgba(56,189,248,0.10), 0 2px 8px 0 rgba(0,0,0,0.04);
   padding-top: 0 !important;
 }
 .ai-generate-param-card {
-  background: linear-gradient(135deg, #FFFFFF 60%, #c145feb3 100%);
+  background: linear-gradient(135deg, #FFFFFF 100%, #c145feb3 100%);
   box-shadow: 0 8px 32px 0 rgba(193,69,254,0.08), 0 2px 8px 0 rgba(0,0,0,0.04);
 }
 .ai-generate-download-card {
-  background: linear-gradient(135deg, #FFFFFF 60%, #45fe88a8 100%);
+  background: linear-gradient(135deg, #FFFFFF 100%, #45fe88a8 100%);
   box-shadow: 0 8px 32px 0 rgba(69,254,136,0.08), 0 2px 8px 0 rgba(0,0,0,0.04);
 }
 .ai-generate-upload-card .ai-generate-card-title {
