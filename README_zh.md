@@ -6,6 +6,9 @@
 ### 项目截图
 ![img.png](img.png)
 ![img_1.png](img_1.png)
+![img_2.png](img_2.png)
+![img_3.png](img_3.png)
+
 ### 核心功能
 - 项目管理: 创建、编辑、删除项目，支持项目描述和维护人员管理
 - Excel批量上传: 支持 `.xlsx` 格式文件上传，智能解析Excel内容

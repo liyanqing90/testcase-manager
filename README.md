@@ -8,6 +8,9 @@ A modern test case management system built with Flask and Vue 3, supporting Exce
 ### project img
 ![img.png](img.png)
 ![img_1.png](img_1.png)
+![img_2.png](img_2.png)
+![img_4.png](img_4.png)
+
 ### Core Functionality
 - Project Management: Create, edit, and delete projects with descriptions and maintainer information
 - Excel Batch Upload: Support for .xlsx format file uploads with intelligent Excel content parsing
