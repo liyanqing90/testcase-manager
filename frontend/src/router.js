@@ -3,6 +3,8 @@ import ManageCase from './views/ManageCase.vue';
 import UploadCase from './views/UploadCase.vue';
 import AiGenerateCase from './views/AiGenerateCase.vue';
 import LogsView from './views/LogsView.vue';
+import AiConfig from './views/AiConfig.vue';
+import DataFactory from './views/DataFactory.vue';
 
 const routes = [
   {
@@ -28,6 +30,16 @@ const routes = [
     path: '/logs',
     name: 'LogsView',
     component: LogsView
+  },
+  {
+    path: '/ai-config',
+    name: 'AiConfig',
+    component: AiConfig
+  },
+  {
+    path: '/data-factory',
+    name: 'DataFactory',
+    component: DataFactory
   }
 ];
 
