@@ -51,7 +51,7 @@
                 size="small"
                 link
                 @click.stop="openEditDialog(project)"
-                class="action-btn edit-btn"
+                class="action-btn project-edit-btn"
               >
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -159,7 +159,7 @@
       :close-on-click-modal="false"
     >
       <!-- 收缩按钮 -->
-      <div v-if="drawerVisible && !detailDialogVisible" class="drawer-toggle-button" @click="closeDrawer">
+      <div v-if="drawerVisible && !detailDialogVisible && !editDialogVisible" class="drawer-toggle-button" @click="closeDrawer">
         <div class="toggle-button-inner">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -261,7 +261,7 @@
                   </template>
                 </el-table-column>
 
-                <el-table-column label="操作" width="180" align="center">
+                <el-table-column label="操作" width="120" align="center">
                   <template #default="scope">
                     <div class="action-buttons">
                       <el-button
@@ -271,6 +271,14 @@
                         @click.stop="viewTestCase(scope.row)"
                       >
                         查看用例
+                      </el-button>
+                      <el-button
+                        type="warning"
+                        size="small"
+                        class="testcase-edit-btn"
+                        @click.stop="editTestCase(scope.row)"
+                      >
+                        编辑用例
                       </el-button>
                       <el-button
                         type="danger"
@@ -424,13 +432,101 @@
             </div>
           </template>
         </el-dialog>
+
+        <!-- 编辑测试用例弹窗 -->
+        <el-dialog
+          v-model="editDialogVisible"
+          width="1000px"
+          @close="resetEditForm"
+          :show-close="true"
+          :close-on-click-modal="false"
+          class="testcase-edit-dialog"
+        >
+          <template #header>
+            <div class="edit-dialog-header">
+              <h3 class="edit-dialog-title">编辑测试用例</h3>
+            </div>
+          </template>
+          <el-form :model="editForm" :rules="editRules" ref="editFormRef" label-width="120px">
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="用例ID" prop="case_id">
+                  <el-input v-model="editForm.case_id" placeholder="请输入用例ID" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="标题" prop="title">
+                  <el-input v-model="editForm.title" placeholder="请输入用例标题" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            
+            <el-form-item label="描述" prop="description">
+              <el-input type="textarea" v-model="editForm.description" :rows="3" placeholder="请输入用例描述" />
+            </el-form-item>
+            
+            <el-row :gutter="20">
+              <el-col :span="8">
+                <el-form-item label="优先级" prop="priority">
+                  <el-select v-model="editForm.priority" placeholder="请选择优先级">
+                    <el-option label="P0" value="P0" />
+                    <el-option label="P1" value="P1" />
+                    <el-option label="P2" value="P2" />
+                    <el-option label="P3" value="P3" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="分类" prop="category">
+                  <el-select v-model="editForm.category" placeholder="请选择分类">
+                    <el-option label="功能测试" value="功能测试" />
+                    <el-option label="接口测试" value="接口测试" />
+                    <el-option label="UI自动化测试" value="UI自动化测试" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="状态" prop="status">
+                  <el-select v-model="editForm.status" placeholder="请选择状态">
+                    <el-option label="未完成" value="draft" />
+                    <el-option label="待执行" value="pending" />
+                    <el-option label="执行中" value="running" />
+                    <el-option label="已完成" value="success" />
+                    <el-option label="失败" value="failed" />
+                    <el-option label="阻塞" value="blocked" />
+                    <el-option label="跳过" value="skipped" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            
+            <el-form-item label="前置条件" prop="preconditions">
+              <el-input type="textarea" v-model="editForm.preconditions" :rows="2" placeholder="请输入前置条件" />
+            </el-form-item>
+            
+            <el-form-item label="测试步骤" prop="steps">
+              <el-input type="textarea" v-model="editForm.steps" :rows="4" placeholder="请输入测试步骤" />
+            </el-form-item>
+            
+            <el-form-item label="预期结果" prop="expected_results">
+              <el-input type="textarea" v-model="editForm.expected_results" :rows="3" placeholder="请输入预期结果" />
+            </el-form-item>
+          </el-form>
+          
+          <template #footer>
+            <span class="dialog-footer">
+              <el-button @click="editDialogVisible = false">取消</el-button>
+              <el-button type="primary" @click="submitEdit">保存</el-button>
+            </span>
+          </template>
+        </el-dialog>
       </div>
     </el-drawer>
 
     <!-- 添加测试用例弹窗 -->
     <el-dialog
       v-model="addTestCaseDialogVisible"
-      width="800px"
+      width="1000px"
       :show-close="true"
       :close-on-click-modal="false"
       class="add-testcase-dialog"
@@ -456,8 +552,25 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="标题" prop="title">
+              <el-input v-model="addTestCaseForm.title" placeholder="请输入用例标题"></el-input>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-form-item label="描述" prop="description">
+          <el-input
+            v-model="addTestCaseForm.description"
+            type="textarea"
+            placeholder="请输入用例描述"
+            :rows="3">
+          </el-input>
+        </el-form-item>
+        
+        <el-row :gutter="20">
+          <el-col :span="8">
             <el-form-item label="优先级" prop="priority">
-              <el-select v-model="addTestCaseForm.priority" placeholder="请选择优先级" style="width: 100%">
+              <el-select v-model="addTestCaseForm.priority" placeholder="请选择优先级">
                 <el-option label="P0" value="P0"></el-option>
                 <el-option label="P1" value="P1"></el-option>
                 <el-option label="P2" value="P2"></el-option>
@@ -465,21 +578,18 @@
               </el-select>
             </el-form-item>
           </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="分类" prop="category">
-              <el-select v-model="addTestCaseForm.category" placeholder="请选择分类" style="width: 100%">
+              <el-select v-model="addTestCaseForm.category" placeholder="请选择分类">
                 <el-option label="功能测试" value="功能测试"></el-option>
                 <el-option label="接口测试" value="接口测试" disabled></el-option>
                 <el-option label="UI自动化测试" value="UI自动化测试" disabled></el-option>
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="状态" prop="status">
-              <el-select v-model="addTestCaseForm.status" placeholder="请选择状态" style="width: 100%">
+              <el-select v-model="addTestCaseForm.status" placeholder="请选择状态">
                 <el-option label="未完成" value="draft"></el-option>
                 <el-option label="待执行" value="pending"></el-option>
                 <el-option label="执行中" value="running"></el-option>
@@ -492,25 +602,12 @@
           </el-col>
         </el-row>
 
-        <el-form-item label="用例标题" prop="title">
-          <el-input v-model="addTestCaseForm.title" placeholder="请输入用例标题"></el-input>
-        </el-form-item>
-
-        <el-form-item label="用例描述" prop="description">
-          <el-input
-            v-model="addTestCaseForm.description"
-            type="textarea"
-            placeholder="请输入用例描述"
-            :rows="3">
-          </el-input>
-        </el-form-item>
-
         <el-form-item label="前置条件" prop="preconditions">
           <el-input
             v-model="addTestCaseForm.preconditions"
             type="textarea"
             placeholder="请输入前置条件"
-            :rows="3">
+            :rows="2">
           </el-input>
         </el-form-item>
 
@@ -552,7 +649,8 @@ import {
   getProjectTestcases,
   updateTestCaseStatus,
   deleteTestCase,
-  addTestCase
+  addTestCase,
+  updateTestCase
 } from '@/api/case.js';
 
 export default {
@@ -610,6 +708,38 @@ export default {
         ],
         category: [
           { required: true, message: '请选择分类', trigger: 'change' }
+        ]
+      },
+      // 编辑用例相关数据
+      editDialogVisible: false,  // 编辑用例弹窗显示状态
+      editForm: {                // 编辑用例表单数据
+        id: '',
+        case_id: '',
+        title: '',
+        description: '',
+        preconditions: '',
+        steps: '',
+        expected_results: '',
+        priority: '',
+        category: '',
+        status: '',
+        project_id: ''
+      },
+      editRules: {               // 编辑用例表单验证规则
+        case_id: [
+          { required: true, message: '请输入用例ID', trigger: 'blur' }
+        ],
+        title: [
+          { required: true, message: '请输入用例标题', trigger: 'blur' }
+        ],
+        priority: [
+          { required: true, message: '请选择优先级', trigger: 'change' }
+        ],
+        category: [
+          { required: true, message: '请选择分类', trigger: 'change' }
+        ],
+        status: [
+          { required: true, message: '请选择状态', trigger: 'change' }
         ]
       }
     };
@@ -1107,6 +1237,57 @@ export default {
           }
         }
       });
+    },
+
+    // 编辑用例相关方法
+    editTestCase(testCase) {
+      this.editForm = {
+        id: testCase.id,
+        case_id: testCase.case_id,
+        title: testCase.title,
+        description: testCase.description || '',
+        preconditions: testCase.preconditions || '',
+        steps: testCase.steps || '',
+        expected_results: testCase.expected_results || '',
+        priority: testCase.priority,
+        category: testCase.category,
+        status: testCase.status,
+        project_id: this.currentProject.id
+      };
+      this.editDialogVisible = true;
+    },
+
+    resetEditForm() {
+      this.editForm = {
+        id: '',
+        case_id: '',
+        title: '',
+        description: '',
+        preconditions: '',
+        steps: '',
+        expected_results: '',
+        priority: '',
+        category: '',
+        status: '',
+        project_id: ''
+      };
+    },
+
+    submitEdit() {
+      this.$refs.editFormRef.validate(async (valid) => {
+        if (valid) {
+          try {
+            // 调用后端API更新用例
+            await updateTestCase(this.editForm.id, this.editForm);
+            this.$message.success('用例更新成功');
+            this.editDialogVisible = false;
+            // 刷新用例列表
+            await this.loadTestCases(this.currentProject.id);
+          } catch (err) {
+            this.$message.error('更新用例失败: ' + (err.response?.data?.error || err.message));
+          }
+        }
+      });
     }
   }
 };
@@ -1276,13 +1457,7 @@ export default {
   height: 16px;
 }
 
-.edit-btn {
-  color: #3b82f6;
-}
 
-.edit-btn:hover {
-  background: #eff6ff;
-}
 
 .delete-btn {
   color: #ef4444 !important;
@@ -1801,26 +1976,43 @@ export default {
 
 /* 查看按钮样式 */
 .view-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  margin: 0 auto;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  width: 80px !important;
+  height: 28px !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.view-btn:hover {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.view-btn:active {
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2) !important;
 }
 
 /* 操作按钮容器样式 */
 .action-buttons {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   justify-content: center;
   align-items: center;
 }
 
-/* 删除按钮样式 */
-.testcase-delete-btn {
+/* 项目编辑按钮样式 */
+.project-edit-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1828,6 +2020,61 @@ export default {
   border-radius: 6px;
   font-size: 12px;
   font-weight: 500;
+  color: #f59e0b !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
+.project-edit-btn:hover {
+  color: #d97706 !important;
+  background-color: rgba(245, 158, 11, 0.1) !important;
+}
+
+.project-edit-btn:active {
+  transform: translateY(0);
+}
+
+/* 用例编辑按钮样式 */
+.testcase-edit-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  width: 80px !important;
+  height: 28px !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  background-color: #f59e0b !important;
+  border-color: #f59e0b !important;
+  color: white !important;
+}
+
+.testcase-edit-btn:hover {
+  background-color: #d97706 !important;
+  border-color: #d97706 !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.testcase-edit-btn:active {
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+/* 删除按钮样式 */
+.testcase-delete-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  width: 80px !important;
+  height: 28px !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
   background-color: #dc2626 !important;
   border-color: #dc2626 !important;
   color: white !important;
@@ -1836,12 +2083,10 @@ export default {
 .testcase-delete-btn:hover {
   background-color: #b91c1c !important;
   border-color: #b91c1c !important;
-  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
 }
 
 .testcase-delete-btn:active {
-  transform: translateY(0);
   box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
 }
 
@@ -2223,6 +2468,11 @@ export default {
   position: relative;
 }
 
+/* 确保详情弹窗的z-index足够高，不被抽屉收缩按钮覆盖 */
+:deep(.testcase-detail-dialog .el-dialog) {
+  z-index: 10000 !important;
+}
+
 /* 添加用例弹窗样式 */
 .add-testcase-dialog {
   position: relative;
@@ -2271,6 +2521,58 @@ export default {
 }
 
 .add-dialog-footer .el-button {
+  margin-left: 12px;
+}
+
+/* 编辑用例弹窗样式 */
+.testcase-edit-dialog {
+  position: relative;
+}
+
+/* 确保编辑弹窗的z-index足够高，不被抽屉收缩按钮覆盖 */
+:deep(.testcase-edit-dialog .el-dialog) {
+  z-index: 10000 !important;
+}
+
+.edit-dialog-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.edit-dialog-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  line-height: 1.2;
+  padding: 0;
+}
+
+.testcase-edit-dialog .el-form-item {
+  margin-bottom: 20px;
+}
+
+.testcase-edit-dialog .el-input__wrapper,
+.testcase-edit-dialog .el-textarea__inner {
+  border-radius: 6px;
+}
+
+.testcase-edit-dialog .el-select {
+  width: 100%;
+}
+
+.testcase-edit-dialog .dialog-footer {
+  text-align: right;
+  padding-top: 20px;
+}
+
+.testcase-edit-dialog .dialog-footer .el-button {
   margin-left: 12px;
 }
 </style>

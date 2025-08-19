@@ -47,8 +47,8 @@ export function addTestCase(projectId, testcase) {
     .then(response => response.data);
 }
 
-export function updateTestCase(projectId, testcaseId, testcase) {
-  return axios.put(`/project/${projectId}/testcase/${testcaseId}`, testcase)
+export function updateTestCase(testcaseId, testcase) {
+  return axios.put(`/test_case/${testcaseId}`, testcase)
     .then(response => response.data);
 }
 

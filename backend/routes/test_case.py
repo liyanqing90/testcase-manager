@@ -153,4 +153,85 @@ def delete_test_case(test_case_id):
         return jsonify({
             'error': f'删除测试用例失败: {error_msg}',
             'test_case_id': test_case_id
-        }), 500 
+        }), 500
+
+@test_case_bp.route('/<int:test_case_id>', methods=['PUT'])
+def update_test_case(test_case_id):
+    """更新测试用例"""
+    try:
+        data = request.json
+        
+        # 验证必需字段
+        required_fields = ['case_id', 'title', 'priority', 'category', 'status']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'字段 {field} 不能为空'}), 400
+        
+        # 验证优先级值
+        valid_priorities = ['P0', 'P1', 'P2', 'P3']
+        if data['priority'] not in valid_priorities:
+            return jsonify({'error': '无效的优先级值'}), 400
+        
+        # 验证状态值
+        valid_statuses = ['success', 'failed', 'blocked', 'skipped', 'pending', 'running', 'draft']
+        if data['status'] not in valid_statuses:
+            return jsonify({'error': '无效的状态值'}), 400
+        
+        # 验证分类值
+        valid_categories = ['功能测试', '接口测试', 'UI自动化测试']
+        if data['category'] not in valid_categories:
+            return jsonify({'error': '无效的分类值'}), 400
+        
+        cur = mysql.connection.cursor()
+        
+        # 检查同一项目内case_id是否重复（排除当前用例）
+        cur.execute("""
+            SELECT id FROM test_cases 
+            WHERE project_id = %s AND case_id = %s AND id != %s
+        """, (data['project_id'], data['case_id'], test_case_id))
+        
+        if cur.fetchone():
+            cur.close()
+            return jsonify({'error': f'用例ID "{data["case_id"]}" 在当前项目中已存在'}), 400
+        
+        # 获取当前时间
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # 更新测试用例
+        cur.execute("""
+            UPDATE test_cases SET 
+                case_id = %s, title = %s, description = %s, preconditions = %s,
+                steps = %s, expected_results = %s, priority = %s, category = %s,
+                status = %s, updated_at = %s, last_updated_by = %s
+            WHERE id = %s
+        """, (
+            data['case_id'],
+            data['title'],
+            data.get('description', ''),
+            data.get('preconditions', ''),
+            data.get('steps', ''),
+            data.get('expected_results', ''),
+            data['priority'],
+            data['category'],
+            data['status'],
+            current_time,
+            '用户',  # last_updated_by
+            test_case_id
+        ))
+        
+        mysql.connection.commit()
+        affected_rows = cur.rowcount
+        cur.close()
+        
+        if affected_rows == 0:
+            return jsonify({'error': '测试用例不存在'}), 404
+        
+        return jsonify({
+            'message': '测试用例更新成功',
+            'test_case_id': test_case_id,
+            'case_id': data['case_id'],
+            'title': data['title']
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'更新测试用例失败: {str(e)}'}), 500 
