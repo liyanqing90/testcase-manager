@@ -1,5 +1,5 @@
 <script setup>
-import { ref, provide, computed, watch } from 'vue';
+import { ref, provide, computed, watch, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { 
   DataAnalysis, 
@@ -11,9 +11,7 @@ import {
   MagicStick,
   DocumentCopy,
   Operation,
-  Switch,
-  Filter,
-  Select
+  Switch
 } from '@element-plus/icons-vue';
 import UploadCase from './views/UploadCase.vue';
 import ManageCase from './views/ManageCase.vue';
@@ -103,6 +101,30 @@ const switchDataFactoryTab = (tabName) => {
 // 切换数据工厂子导航的展开/收缩状态
 const toggleDataFactorySubMenu = () => {
   dataFactorySubMenuExpanded.value = !dataFactorySubMenuExpanded.value;
+};
+
+// 获取主导航面包屑文本
+const getMainTabText = () => {
+  const titles = {
+    'upload': '用例上传',
+    'ai-generate': 'AI生成用例',
+    'logs': '运行日志',
+    'ai-config': 'AI配置',
+    'data-factory': '数据工厂',
+    'manage': '项目用例管理'
+  };
+  return titles[tab.value] || '项目用例管理';
+};
+
+// 获取子导航面包屑文本
+const getSubTabText = () => {
+  const subTabTitles = {
+    'generator': '数据生成器',
+    'template': '数据模板',
+    'batch': '批量生成',
+    'transform': '格式转换'
+  };
+  return subTabTitles[dataFactoryTab.value] || '数据工厂';
 };
 
 // 监听路由变化，自动恢复侧边栏状态
@@ -254,14 +276,7 @@ watch(() => route.path, (newPath) => {
                 <el-icon><Switch /></el-icon>
                 <span v-show="!sidebarCollapsed">格式转换</span>
               </div>
-              <div class="sub-menu-item" @click="switchDataFactoryTab('clean')" :class="{ active: dataFactoryTab === 'clean' }">
-                <el-icon><Filter /></el-icon>
-                <span v-show="!sidebarCollapsed">数据清洗</span>
-              </div>
-              <div class="sub-menu-item" @click="switchDataFactoryTab('validate')" :class="{ active: dataFactoryTab === 'validate' }">
-                <el-icon><Select /></el-icon>
-                <span v-show="!sidebarCollapsed">数据验证</span>
-              </div>
+
             </div>
           </div>
       </el-menu>
@@ -296,9 +311,15 @@ watch(() => route.path, (newPath) => {
                 <span class="breadcrumb-item">首页</span>
                 <span class="breadcrumb-separator">/</span>
                 <transition name="fade" mode="out-in">
-                  <span class="breadcrumb-item active" :key="tab">
-                    {{ tab==='upload' ? '用例上传' : tab==='ai-generate' ? 'AI生成用例' : tab==='logs' ? '运行日志' : tab==='ai-config' ? 'AI配置' : tab==='data-factory' ? '数据工厂' : '项目用例管理' }}
-                  </span>
+                  <div :key="`${tab}-${dataFactoryTab}`" class="breadcrumb-main-section">
+                    <span class="breadcrumb-item active">
+                      {{ getMainTabText() }}
+                    </span>
+                    <span v-if="tab === 'data-factory'" class="breadcrumb-separator">/</span>
+                    <span v-if="tab === 'data-factory'" class="breadcrumb-item active" data-sub-tab>
+                      {{ getSubTabText() }}
+                    </span>
+                  </div>
                 </transition>
               </div>
             </div>
@@ -397,6 +418,10 @@ watch(() => route.path, (newPath) => {
 .sidebar-menu {
   padding: 24px 0;
   flex: 1;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
 .custom-menu {
@@ -622,12 +647,13 @@ watch(() => route.path, (newPath) => {
   display: flex;
   align-items: center;
   margin-left: -40px;
+  overflow: hidden;
 }
 
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   padding: 12px 20px;
   background: rgba(255, 255, 255, 0.8);
   border-radius: 12px;
@@ -636,22 +662,10 @@ watch(() => route.path, (newPath) => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   position: relative;
   min-height: 24px;
+  min-width: 300px;
 }
 
-/* 面包屑导航 */
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  position: relative;
-  min-height: 24px;
-}
+
 
 .breadcrumb-item {
   font-size: 16px;
@@ -663,17 +677,25 @@ watch(() => route.path, (newPath) => {
   align-items: center;
   height: 1.2em;
   line-height: 1.2;
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
 }
 
 .breadcrumb-item.active {
   color: #1F2937;
   font-weight: 600;
   position: relative;
-  min-width: 80px;
   display: flex;
   align-items: center;
   height: 1.2em;
   line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* 为子导航面包屑项添加特殊样式 */
+.breadcrumb-item.active[data-sub-tab] {
+  white-space: nowrap;
 }
 
 .breadcrumb-separator {
@@ -684,16 +706,22 @@ watch(() => route.path, (newPath) => {
   align-items: center;
   height: 1.2em;
   line-height: 1.2;
+  margin: 0;
+  padding: 0;
+}
+
+/* 主导航部分容器样式 */
+.breadcrumb-main-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* 淡入淡出动画 */
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
   display: flex;
   align-items: center;
   height: 1.2em;
@@ -913,8 +941,6 @@ watch(() => route.path, (newPath) => {
 .sub-menu-item:nth-child(2) { animation-delay: 0.15s; }
 .sub-menu-item:nth-child(3) { animation-delay: 0.2s; }
 .sub-menu-item:nth-child(4) { animation-delay: 0.25s; }
-.sub-menu-item:nth-child(5) { animation-delay: 0.3s; }
-.sub-menu-item:nth-child(6) { animation-delay: 0.35s; }
 
 .sub-menu-item::before {
   content: '';
@@ -1014,5 +1040,10 @@ html, body, #app {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
+}
+
+/* 侧边栏菜单滚动条样式 */
+.sidebar-menu::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 </style>

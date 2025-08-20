@@ -372,8 +372,6 @@ const getTabTitle = () => {
     'template': '数据模板',
     'batch': '批量生成',
     'transform': '格式转换',
-    'clean': '数据清洗',
-    'validate': '数据验证',
     'projects': '项目管理',
     'history': '生成历史',
     'settings': '系统设置'
