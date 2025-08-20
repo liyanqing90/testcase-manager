@@ -1,6 +1,20 @@
 <script setup>
 import { ref, provide, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { 
+  DataAnalysis, 
+  Files, 
+  Upload, 
+  RefreshRight, 
+  Brush, 
+  Check,
+  MagicStick,
+  DocumentCopy,
+  Operation,
+  Switch,
+  Filter,
+  Select
+} from '@element-plus/icons-vue';
 import UploadCase from './views/UploadCase.vue';
 import ManageCase from './views/ManageCase.vue';
 import AiGenerateCase from './views/AiGenerateCase.vue';
@@ -13,6 +27,10 @@ const route = useRoute();
 
 const sidebarCollapsed = ref(false);
 const sidebarDisabled = ref(false);
+
+// 数据工厂子导航状态
+const dataFactoryTab = ref('generator');
+const dataFactorySubMenuExpanded = ref(true); // 新增：控制数据工厂子导航的展开/收缩
 
 // 创建响应式的项目删除事件
 const projectDeletedEvent = ref(null);
@@ -77,10 +95,28 @@ const handleTabSelect = (selectedTab) => {
   }
 };
 
+// 切换数据工厂子导航
+const switchDataFactoryTab = (tabName) => {
+  dataFactoryTab.value = tabName;
+};
+
+// 切换数据工厂子导航的展开/收缩状态
+const toggleDataFactorySubMenu = () => {
+  dataFactorySubMenuExpanded.value = !dataFactorySubMenuExpanded.value;
+};
+
 // 监听路由变化，自动恢复侧边栏状态
 watch(() => route.path, (newPath) => {
   // 当路由变化时，自动恢复侧边栏状态
   sidebarDisabled.value = false;
+  
+  // 如果切换到数据工厂，确保子导航展开
+  if (newPath === '/data-factory') {
+    dataFactorySubMenuExpanded.value = true;
+  } else {
+    // 如果切换到其他页面，数据工厂子导航收起
+    dataFactorySubMenuExpanded.value = false;
+  }
 });
 </script>
 
@@ -177,7 +213,7 @@ watch(() => route.path, (newPath) => {
             </div>
           </el-menu-item>
 
-          <el-menu-item index="data-factory" class="menu-item">
+          <el-menu-item index="data-factory" class="menu-item" @click="toggleDataFactorySubMenu">
             <div class="menu-item-content">
               <div class="menu-icon">
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -189,8 +225,45 @@ watch(() => route.path, (newPath) => {
                 </svg>
               </div>
               <span v-show="!sidebarCollapsed">数据工厂</span>
+              <div v-show="!sidebarCollapsed" class="expand-arrow" :class="{ 'expanded': dataFactorySubMenuExpanded }">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
             </div>
           </el-menu-item>
+          
+          <!-- 数据工厂子导航 -->
+          <div v-if="tab === 'data-factory' && dataFactorySubMenuExpanded" 
+               class="sub-menu-container" 
+               :class="{ 'expanded': dataFactorySubMenuExpanded }">
+            <div class="sub-menu">
+              <div class="sub-menu-item" @click="switchDataFactoryTab('generator')" :class="{ active: dataFactoryTab === 'generator' }">
+                <el-icon><MagicStick /></el-icon>
+                <span v-show="!sidebarCollapsed">数据生成器</span>
+              </div>
+              <div class="sub-menu-item" @click="switchDataFactoryTab('template')" :class="{ active: dataFactoryTab === 'template' }">
+                <el-icon><DocumentCopy /></el-icon>
+                <span v-show="!sidebarCollapsed">数据模板</span>
+              </div>
+              <div class="sub-menu-item" @click="switchDataFactoryTab('batch')" :class="{ active: dataFactoryTab === 'batch' }">
+                <el-icon><Operation /></el-icon>
+                <span v-show="!sidebarCollapsed">批量生成</span>
+              </div>
+              <div class="sub-menu-item" @click="switchDataFactoryTab('transform')" :class="{ active: dataFactoryTab === 'transform' }">
+                <el-icon><Switch /></el-icon>
+                <span v-show="!sidebarCollapsed">格式转换</span>
+              </div>
+              <div class="sub-menu-item" @click="switchDataFactoryTab('clean')" :class="{ active: dataFactoryTab === 'clean' }">
+                <el-icon><Filter /></el-icon>
+                <span v-show="!sidebarCollapsed">数据清洗</span>
+              </div>
+              <div class="sub-menu-item" @click="switchDataFactoryTab('validate')" :class="{ active: dataFactoryTab === 'validate' }">
+                <el-icon><Select /></el-icon>
+                <span v-show="!sidebarCollapsed">数据验证</span>
+              </div>
+            </div>
+          </div>
       </el-menu>
       </div>
 
@@ -237,7 +310,7 @@ watch(() => route.path, (newPath) => {
         <AiGenerateCase v-else-if="tab==='ai-generate'" />
         <LogsView v-else-if="tab==='logs'" />
         <AiConfig v-else-if="tab==='ai-config'" />
-        <DataFactory v-else-if="tab==='data-factory'" />
+        <DataFactory v-else-if="tab==='data-factory'" :current-tab="dataFactoryTab" />
         <ManageCase v-else @project-deleted="handleProjectDeleted" @sidebar-disabled="handleSidebarDisabled" />
       </el-main>
     </el-container>
@@ -362,6 +435,31 @@ watch(() => route.path, (newPath) => {
   font-weight: 600 !important;
   font-size: 15px !important;
   font-family: 'PingFang SC', 'Helvetica Neue', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif !important;
+  flex: 1; /* 让文字占据剩余空间 */
+}
+
+.expand-arrow {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.8); /* 默认白色半透明 */
+}
+
+/* 主导航选中状态下的箭头颜色 */
+.menu-item.is-active .expand-arrow {
+  color: #1f2937; /* 选中状态下使用深色 */
+}
+
+.expand-arrow.expanded {
+  transform: rotate(180deg);
+}
+
+.expand-arrow svg {
+  width: 16px;
+  height: 16px;
 }
 
 .menu-icon {
@@ -458,6 +556,14 @@ watch(() => route.path, (newPath) => {
   height: 32px;
   border-radius: 8px;
   object-fit: cover;
+}
+
+/* 主导航收缩状态样式 */
+.sidebar.collapsed .menu-item {
+  height: 56px; /* 保持主导航的重要性，比子导航大 */
+  width: 56px; /* 固定宽度，形成正方形 */
+  margin: 4px auto; /* 居中显示 */
+  border-radius: 12px; /* 保持主导航的圆角 */
 }
 
 .sidebar.collapsed .menu-item-content {
@@ -714,6 +820,172 @@ watch(() => route.path, (newPath) => {
 
 .sidebar.disabled .menu-item.is-active {
   background: transparent !important;
+}
+
+/* 数据工厂子导航样式 */
+.sub-menu-container {
+  margin-top: 8px;
+  margin-bottom: 16px;
+  overflow: hidden; /* 隐藏超出部分 */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* 增加动画时间，更平滑 */
+  max-height: 0; /* 初始收起状态 */
+  opacity: 0; /* 初始透明 */
+}
+
+.sub-menu-container.expanded {
+  max-height: 300px; /* 展开状态的最大高度 */
+  opacity: 1; /* 展开状态完全显示 */
+}
+
+.sub-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 20px 0 40px; /* 左侧增加缩进 */
+  transform-origin: top; /* 设置变换原点为顶部 */
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* 平滑过渡动画 */
+}
+
+/* 子导航展开/收起动画 */
+.sub-menu-container-enter-active,
+.sub-menu-container-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sub-menu-container-enter-from {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-10px);
+}
+
+.sub-menu-container-enter-to {
+  opacity: 1;
+  max-height: 300px; /* 设置最大高度 */
+  transform: translateY(0);
+}
+
+.sub-menu-container-leave-from {
+  opacity: 1;
+  max-height: 300px;
+  transform: translateY(0);
+}
+
+.sub-menu-container-leave-to {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-10px);
+}
+
+.sub-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 12px; /* 与主导航保持一致 */
+  font-size: 14px;
+  gap: 12px;
+  position: relative;
+  height: 48px; /* 稍微小一点，但保持比例 */
+  margin: 4px 0; /* 添加垂直间距 */
+  opacity: 0; /* 初始透明 */
+  transform: translateX(-20px); /* 初始向左偏移 */
+  animation: slideInItem 0.3s ease forwards; /* 进入动画 */
+  white-space: nowrap; /* 防止文字换行 */
+  writing-mode: horizontal-tb; /* 确保文字水平显示 */
+}
+
+/* 子导航项进入动画 */
+@keyframes slideInItem {
+  0% {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 为每个子导航项设置不同的动画延迟 */
+.sub-menu-item:nth-child(1) { animation-delay: 0.1s; }
+.sub-menu-item:nth-child(2) { animation-delay: 0.15s; }
+.sub-menu-item:nth-child(3) { animation-delay: 0.2s; }
+.sub-menu-item:nth-child(4) { animation-delay: 0.25s; }
+.sub-menu-item:nth-child(5) { animation-delay: 0.3s; }
+.sub-menu-item:nth-child(6) { animation-delay: 0.35s; }
+
+.sub-menu-item::before {
+  content: '';
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  width: 12px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-50%);
+}
+
+.sub-menu-item:hover {
+  background: rgba(255, 255, 255, 0.8) !important; /* 与主导航hover保持一致 */
+  color: #1f2937 !important; /* 与主导航hover保持一致 */
+  transform: translateX(4px); /* 与主导航hover保持一致 */
+}
+
+.sub-menu-item.active {
+  background: rgba(255, 255, 255, 0.95) !important; /* 与主导航active保持一致 */
+  color: #1f2937 !important; /* 与主导航active保持一致 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 与主导航active保持一致 */
+  border: 1px solid rgba(255, 255, 255, 0.8); /* 与主导航active保持一致 */
+  font-weight: 600; /* 与主导航active保持一致 */
+}
+
+.sub-menu-item.active::before {
+  background: rgba(255, 255, 255, 0.8); /* 激活状态下的连接线更亮 */
+}
+
+.sub-menu-item .el-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* 侧边栏收缩时的子导航样式 */
+.sidebar.collapsed .sub-menu {
+  padding: 0 8px 0 16px; /* 收缩时减少缩进 */
+}
+
+.sidebar.collapsed .sub-menu-item {
+  padding: 8px;
+  justify-content: center;
+  height: 40px; /* 与主导航收缩时的高度保持一致 */
+  width: 40px; /* 固定宽度，与主导航保持一致 */
+  margin: 4px auto; /* 居中显示 */
+  border-radius: 8px; /* 收缩时使用较小的圆角 */
+}
+
+.sidebar.collapsed .sub-menu-item span {
+  display: none;
+}
+
+.sidebar.collapsed .sub-menu-item::before {
+  display: none; /* 收缩时隐藏连接线 */
+}
+
+.sidebar.collapsed .sub-menu-item .el-icon {
+  font-size: 16px; /* 与主导航收缩时的图标大小保持一致 */
+  width: 20px; /* 与主导航图标容器大小保持一致 */
+  height: 20px; /* 与主导航图标容器大小保持一致 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sub-menu-item span {
+  white-space: nowrap; /* 防止文字换行 */
+  writing-mode: horizontal-tb; /* 确保文字水平显示 */
+  text-orientation: mixed; /* 确保文字方向正确 */
+  display: inline-block; /* 确保文字块级显示 */
 }
 </style>
 

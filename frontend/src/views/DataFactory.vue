@@ -1,437 +1,714 @@
 <template>
   <div class="data-factory-container">
-    <div class="factory-header">
-      <h2>数据工厂</h2>
-      <p>批量生成、转换和管理测试数据</p>
-    </div>
-    
+    <!-- 主内容区域 -->
     <div class="factory-content">
-      <!-- 数据生成工具 -->
-      <el-card class="factory-card">
-        <template #header>
-          <div class="card-header">
-            <span>数据生成工具</span>
-          </div>
-        </template>
-        
-        <div class="tool-section">
-          <h4>测试数据生成</h4>
-          <el-form :model="dataGenForm" label-width="120px">
-            <el-form-item label="数据类型">
-              <el-select v-model="dataGenForm.dataType" placeholder="请选择数据类型">
-                <el-option label="用户信息" value="user" />
-                <el-option label="产品信息" value="product" />
-                <el-option label="订单数据" value="order" />
-                <el-option label="地址信息" value="address" />
-                <el-option label="自定义数据" value="custom" />
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="生成数量">
-              <el-input-number 
-                v-model="dataGenForm.count" 
-                :min="1" 
-                :max="10000" 
-                :step="100"
-              />
-            </el-form-item>
-            
-            <el-form-item label="数据格式">
-              <el-select v-model="dataGenForm.format" placeholder="请选择输出格式">
-                <el-option label="JSON" value="json" />
-                <el-option label="CSV" value="csv" />
-                <el-option label="Excel" value="excel" />
-                <el-option label="SQL" value="sql" />
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-button type="primary" @click="generateData">生成数据</el-button>
-              <el-button @click="showPreviewData">预览数据</el-button>
-            </el-form-item>
-          </el-form>
+      <!-- 数据生成器页面 -->
+      <div v-if="currentTab === 'generator'" class="tab-content">
+        <div class="content-header">
+          <h2>数据生成器</h2>
+          <p>配置数据结构和生成规则，快速生成测试数据</p>
         </div>
-      </el-card>
-      
-      <!-- 数据转换工具 -->
-      <el-card class="factory-card">
-        <template #header>
-          <div class="card-header">
-            <span>数据转换工具</span>
-          </div>
-        </template>
-        
-        <div class="tool-section">
-          <h4>格式转换</h4>
-          <el-form :model="convertForm" label-width="120px">
-            <el-form-item label="源格式">
-              <el-select v-model="convertForm.sourceFormat" placeholder="请选择源格式">
-                <el-option label="JSON" value="json" />
-                <el-option label="CSV" value="csv" />
-                <el-option label="Excel" value="excel" />
-                <el-option label="XML" value="xml" />
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="目标格式">
-              <el-select v-model="convertForm.targetFormat" placeholder="请选择目标格式">
-                <el-option label="JSON" value="json" />
-                <el-option label="CSV" value="csv" />
-                <el-option label="Excel" value="excel" />
-                <el-option label="SQL" value="sql" />
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="上传文件">
-              <el-upload
-                class="upload-demo"
-                drag
-                action="#"
-                :auto-upload="false"
-                :on-change="handleFileChange"
-                :file-list="fileList"
-              >
-                <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-                <div class="el-upload__text">
-                  将文件拖到此处，或<em>点击上传</em>
-                </div>
-              </el-upload>
-            </el-form-item>
-            
-            <el-form-item>
-              <el-button type="primary" @click="convertData" :disabled="!convertForm.sourceFile">转换数据</el-button>
-            </el-form-item>
-          </el-form>
-        </div>
-      </el-card>
-      
-      <!-- 数据管理工具 -->
-      <el-card class="factory-card">
-        <template #header>
-          <div class="card-header">
-            <span>数据管理工具</span>
-          </div>
-        </template>
-        
-        <div class="tool-section">
-          <h4>数据模板管理</h4>
-          <div class="template-list">
-            <div class="template-item" v-for="template in dataTemplates" :key="template.id">
-              <div class="template-info">
-                <h5>{{ template.name }}</h5>
-                <p>{{ template.description }}</p>
-                <span class="template-type">{{ template.type }}</span>
+
+        <div class="generator-workspace">
+          <!-- 数据结构配置区 -->
+          <div class="workspace-left">
+            <div class="config-panel">
+              <div class="panel-header">
+                <h4>数据结构配置</h4>
+                <el-button size="small" @click="addField">
+                  <el-icon><Plus /></el-icon>
+                  添加字段
+                </el-button>
               </div>
-              <div class="template-actions">
-                <el-button size="small" @click="editTemplate(template)">编辑</el-button>
-                <el-button size="small" type="danger" @click="deleteTemplate(template.id)">删除</el-button>
+              
+              <div class="field-list">
+                <div v-for="(field, index) in dataStructure" :key="index" class="field-item">
+                  <div class="field-header">
+                    <el-input 
+                      v-model="field.name" 
+                      placeholder="字段名称"
+                      size="small"
+                      class="field-name"
+                    />
+                    <el-select 
+                      v-model="field.type" 
+                      placeholder="数据类型"
+                      size="small"
+                      class="field-type"
+                    >
+                      <el-option label="字符串" value="string" />
+                      <el-option label="数字" value="number" />
+                      <el-option label="日期" value="date" />
+                      <el-option label="布尔值" value="boolean" />
+                      <el-option label="枚举" value="enum" />
+                      <el-option label="自定义" value="custom" />
+                    </el-select>
+                    <el-button 
+                      size="small" 
+                      type="danger" 
+                      @click="removeField(index)"
+                      class="field-remove"
+                    >
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </div>
+                  
+                  <!-- 字段配置选项 -->
+                  <div v-if="field.type === 'string'" class="field-config">
+                    <el-input 
+                      v-model="field.minLength" 
+                      placeholder="最小长度"
+                      size="small"
+                      type="number"
+                      class="config-input"
+                    />
+                    <el-input 
+                      v-model="field.maxLength" 
+                      placeholder="最大长度"
+                      size="small"
+                      type="number"
+                      class="config-input"
+                    />
+                    <el-input 
+                      v-model="field.pattern" 
+                      placeholder="正则表达式"
+                      size="small"
+                      class="config-input"
+                    />
+                  </div>
+                  
+                  <div v-if="field.type === 'number'" class="field-config">
+                    <el-input 
+                      v-model="field.min" 
+                      placeholder="最小值"
+                      size="small"
+                      type="number"
+                      class="config-input"
+                    />
+                    <el-input 
+                      v-model="field.max" 
+                      placeholder="最大值"
+                      size="small"
+                      type="number"
+                      class="config-input"
+                    />
+                    <el-input 
+                      v-model="field.decimals" 
+                      placeholder="小数位数"
+                      size="small"
+                      type="number"
+                      class="config-input"
+                    />
+                  </div>
+                  
+                  <div v-if="field.type === 'enum'" class="field-config">
+                    <el-tag 
+                      v-for="(value, idx) in field.enumValues" 
+                      :key="idx"
+                      closable
+                      @close="removeEnumValue(field, idx)"
+                      class="enum-tag"
+                    >
+                      {{ value }}
+                    </el-tag>
+                    <el-input 
+                      v-model="newEnumValue" 
+                      placeholder="添加枚举值"
+                      size="small"
+                      @keyup.enter="addEnumValue(field)"
+                      class="enum-input"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          
-          <el-button type="primary" @click="createTemplate" style="margin-top: 16px;">
-            创建新模板
-          </el-button>
+
+          <!-- 生成配置区 -->
+          <div class="workspace-right">
+            <div class="config-panel">
+              <div class="panel-header">
+                <h4>生成配置</h4>
+              </div>
+              
+              <el-form :model="generationConfig" label-width="100px">
+            <el-form-item label="生成数量">
+              <el-input-number 
+                    v-model="generationConfig.count" 
+                :min="1" 
+                    :max="100000"
+                :step="100"
+                    size="large"
+                    style="width: 100%"
+              />
+            </el-form-item>
+            
+                <el-form-item label="输出格式">
+                  <el-select v-model="generationConfig.format" size="large" style="width: 100%">
+                <el-option label="JSON" value="json" />
+                <el-option label="CSV" value="csv" />
+                <el-option label="Excel" value="excel" />
+                <el-option label="SQL" value="sql" />
+              </el-select>
+            </el-form-item>
+            
+                <el-form-item label="文件名">
+                  <el-input 
+                    v-model="generationConfig.filename" 
+                    placeholder="generated_data"
+                    size="large"
+                  />
+            </el-form-item>
+            
+            <el-form-item>
+                  <el-button 
+                    type="primary" 
+                    size="large" 
+                    @click="generateData"
+                    :loading="generating"
+                    style="width: 100%"
+                  >
+                    <el-icon><VideoPlay /></el-icon>
+                    {{ generating ? '生成中...' : '开始生成' }}
+                  </el-button>
+            </el-form-item>
+          </el-form>
         </div>
-      </el-card>
+          </div>
+        </div>
+      </div>
+
+      <!-- 数据模板页面 -->
+      <div v-else-if="currentTab === 'template'" class="tab-content">
+        <div class="content-header">
+          <h2>数据模板</h2>
+          <p>管理和复用常用的数据结构模板</p>
+          </div>
+        
+        <div class="template-grid">
+          <div class="template-card" @click="useTemplate(template)" v-for="template in templates" :key="template.id">
+            <div class="template-icon">
+              <el-icon><Files /></el-icon>
+            </div>
+            <h4>{{ template.name }}</h4>
+                <p>{{ template.description }}</p>
+            <div class="template-tags">
+              <el-tag size="small" v-for="tag in template.tags" :key="tag">{{ tag }}</el-tag>
+            </div>
+          </div>
+          
+          <div class="template-card add-template" @click="createTemplate">
+            <div class="template-icon">
+              <el-icon><Plus /></el-icon>
+            </div>
+            <h4>创建新模板</h4>
+            <p>自定义数据结构模板</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 批量生成页面 -->
+      <div v-else-if="currentTab === 'batch'" class="tab-content">
+        <div class="content-header">
+          <h2>批量生成</h2>
+          <p>批量处理多个数据生成任务</p>
     </div>
     
-    <!-- 数据预览弹窗 -->
-    <el-dialog
-      v-model="previewDialogVisible"
-      title="数据预览"
-      width="80%"
-      class="preview-dialog"
-    >
-      <div class="preview-content">
-        <pre v-if="previewData" class="data-preview">{{ JSON.stringify(previewData, null, 2) }}</pre>
-        <div v-else class="no-data">暂无预览数据</div>
+        <div class="batch-workspace">
+          <el-upload
+            class="batch-upload"
+            drag
+            action="#"
+            :auto-upload="false"
+            :on-change="handleBatchFileChange"
+            :file-list="batchFiles"
+          >
+            <el-icon class="el-icon--upload"><Upload /></el-icon>
+            <div class="el-upload__text">
+              拖拽配置文件到此处，或<em>点击上传</em>
+            </div>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 JSON、YAML 格式的配置文件
+              </div>
+            </template>
+          </el-upload>
+          
+          <div v-if="batchFiles.length > 0" class="batch-tasks">
+            <h4>批量任务列表</h4>
+            <el-table :data="batchTasks" style="width: 100%">
+              <el-table-column prop="name" label="任务名称" />
+              <el-table-column prop="status" label="状态">
+                <template #default="scope">
+                  <el-tag :type="getStatusType(scope.row.status)">
+                    {{ scope.row.status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="progress" label="进度">
+                <template #default="scope">
+                  <el-progress :percentage="scope.row.progress" />
+                </template>
+              </el-table-column>
+              <el-table-column label="操作">
+                <template #default="scope">
+                  <el-button size="small" @click="startBatchTask(scope.row)">开始</el-button>
+                  <el-button size="small" type="danger" @click="cancelBatchTask(scope.row)">取消</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
       </div>
       
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="previewDialogVisible = false">关闭</el-button>
-          <el-button type="primary" @click="downloadPreviewData">下载数据</el-button>
-        </span>
-      </template>
-    </el-dialog>
+      <!-- 其他页面占位 -->
+      <div v-else class="tab-content">
+        <div class="content-header">
+          <h2>{{ getTabTitle() }}</h2>
+          <p>功能开发中，敬请期待...</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
-import { UploadFilled } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
+import { 
+  Plus, 
+  DataAnalysis, 
+  Files, 
+  Upload, 
+  RefreshRight, 
+  Brush, 
+  Check, 
+  Folder, 
+  Clock, 
+  Setting,
+  Delete,
+  VideoPlay,
+  Document,
+  Collection,
+  Grid,
+  Tools,
+  Monitor
+} from '@element-plus/icons-vue';
 
-// 数据生成表单
-const dataGenForm = reactive({
-  dataType: 'user',
-  count: 100,
-  format: 'json'
+// 接收父组件传递的当前标签页
+const props = defineProps({
+  currentTab: {
+    type: String,
+    default: 'generator'
+  }
 });
 
-// 数据转换表单
-const convertForm = reactive({
-  sourceFormat: 'json',
-  targetFormat: 'csv',
-  sourceFile: null
-});
-
-// 文件列表
-const fileList = ref([]);
-
-// 数据模板
-const dataTemplates = ref([
+// 数据结构配置
+const dataStructure = ref([
   {
-    id: 1,
-    name: '用户基础信息',
-    description: '包含用户名、邮箱、手机号等基础字段',
-    type: '用户数据'
+    name: 'id',
+    type: 'number',
+    min: 1,
+    max: 1000,
+    decimals: 0
   },
   {
-    id: 2,
-    name: '产品信息模板',
-    description: '产品名称、价格、分类、描述等字段',
-    type: '产品数据'
+    name: 'name',
+    type: 'string',
+    minLength: 2,
+    maxLength: 20,
+    pattern: ''
   },
   {
-    id: 3,
-    name: '订单数据模板',
-    description: '订单号、商品、数量、金额、状态等字段',
-    type: '订单数据'
+    name: 'email',
+    type: 'string',
+    minLength: 5,
+    maxLength: 50,
+    pattern: '^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$'
   }
 ]);
 
-// 预览弹窗
-const previewDialogVisible = ref(false);
-const previewData = ref(null);
+// 生成配置
+const generationConfig = reactive({
+  count: 100,
+  format: 'json',
+  filename: 'generated_data'
+});
+
+// 数据模板
+const templates = ref([
+  {
+    id: 1,
+    name: '用户基础信息',
+    description: '包含用户ID、姓名、邮箱等基础字段',
+    tags: ['用户', '基础信息', '常用']
+  },
+  {
+    id: 2,
+    name: '产品信息',
+    description: '产品名称、价格、分类、描述等字段',
+    tags: ['产品', '电商', '商品']
+  },
+  {
+    id: 3,
+    name: '订单数据',
+    description: '订单号、商品、数量、金额、状态等字段',
+    tags: ['订单', '交易', '财务']
+  }
+]);
+
+// 批量文件
+const batchFiles = ref([]);
+const batchTasks = ref([]);
+
+// 生成状态
+const generating = ref(false);
+const newEnumValue = ref('');
+
+// 获取标签页标题
+const getTabTitle = () => {
+  const titles = {
+    'generator': '数据生成器',
+    'template': '数据模板',
+    'batch': '批量生成',
+    'transform': '格式转换',
+    'clean': '数据清洗',
+    'validate': '数据验证',
+    'projects': '项目管理',
+    'history': '生成历史',
+    'settings': '系统设置'
+  };
+  return titles[props.currentTab] || '未知页面';
+};
+
+// 添加字段
+const addField = () => {
+  dataStructure.value.push({
+    name: '',
+    type: 'string',
+    minLength: 1,
+    maxLength: 50,
+    pattern: ''
+  });
+};
+
+// 删除字段
+const removeField = (index) => {
+  dataStructure.value.splice(index, 1);
+};
+
+// 添加枚举值
+const addEnumValue = (field) => {
+  if (newEnumValue.value.trim()) {
+    if (!field.enumValues) {
+      field.enumValues = [];
+    }
+    field.enumValues.push(newEnumValue.value.trim());
+    newEnumValue.value = '';
+  }
+};
+
+// 删除枚举值
+const removeEnumValue = (field, index) => {
+  field.enumValues.splice(index, 1);
+};
 
 // 生成数据
-const generateData = () => {
-  // TODO: 实现真实的数据生成逻辑
-  const mockData = Array.from({ length: dataGenForm.count }, (_, index) => ({
-    id: index + 1,
-    name: `测试数据${index + 1}`,
-    type: dataGenForm.dataType,
-    timestamp: new Date().toISOString()
-  }));
+const generateData = async () => {
+  if (dataStructure.value.length === 0) {
+    ElMessage.warning('请至少添加一个字段');
+    return;
+  }
   
-  previewData.value = mockData;
-  previewDialogVisible.value = true;
-  ElMessage.success(`成功生成 ${dataGenForm.count} 条测试数据`);
-};
-
-// 预览数据
-const showPreviewData = () => {
-  if (!previewData.value) {
-    ElMessage.warning('请先生成数据');
-    return;
-  }
-  previewDialogVisible.value = true;
-};
-
-// 处理文件上传
-const handleFileChange = (file) => {
-  convertForm.sourceFile = file;
-  ElMessage.success(`文件 ${file.name} 上传成功`);
-};
-
-// 转换数据
-const convertData = () => {
-  if (!convertForm.sourceFile) {
-    ElMessage.warning('请先上传文件');
-    return;
-  }
-  // TODO: 实现真实的数据转换逻辑
-  ElMessage.success(`数据从 ${convertForm.sourceFormat} 转换为 ${convertForm.targetFormat} 成功`);
-};
-
-// 编辑模板
-const editTemplate = (template) => {
-  ElMessage.info(`编辑模板: ${template.name}`);
-};
-
-// 删除模板
-const deleteTemplate = async (id) => {
+  generating.value = true;
+  
   try {
-    await ElMessageBox.confirm('确定要删除这个模板吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    });
+    // 模拟生成过程
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    dataTemplates.value = dataTemplates.value.filter(t => t.id !== id);
-    ElMessage.success('模板删除成功');
-  } catch {
-    // 用户取消删除
+    ElMessage.success(`成功生成 ${generationConfig.count} 条测试数据`);
+    
+    // 这里可以添加下载逻辑
+    const dataStr = JSON.stringify({
+      structure: dataStructure.value,
+      config: generationConfig,
+      generated_at: new Date().toISOString()
+    }, null, 2);
+    
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${generationConfig.filename}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+  } catch (error) {
+    ElMessage.error('生成失败：' + error.message);
+  } finally {
+    generating.value = false;
   }
 };
 
-// 创建新模板
+// 使用模板
+const useTemplate = (template) => {
+  ElMessage.info(`使用模板：${template.name}`);
+  // 这里可以加载模板到数据结构中
+};
+
+// 创建模板
 const createTemplate = () => {
   ElMessage.info('创建新模板功能开发中...');
 };
 
-// 下载预览数据
-const downloadPreviewData = () => {
-  if (!previewData.value) {
-    ElMessage.warning('暂无数据可下载');
-    return;
-  }
-  
-  const dataStr = JSON.stringify(previewData.value, null, 2);
-  const blob = new Blob([dataStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `test_data_${new Date().getTime()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  
-  ElMessage.success('数据下载成功');
+// 处理批量文件上传
+const handleBatchFileChange = (file) => {
+  ElMessage.success(`文件 ${file.name} 上传成功`);
+  // 这里可以解析配置文件
+};
+
+// 开始批量任务
+const startBatchTask = (task) => {
+  ElMessage.info(`开始任务：${task.name}`);
+};
+
+// 取消批量任务
+const cancelBatchTask = (task) => {
+  ElMessage.info(`取消任务：${task.name}`);
+};
+
+// 获取状态类型
+const getStatusType = (status) => {
+  const types = {
+    'pending': 'info',
+    'running': 'warning',
+    'completed': 'success',
+    'failed': 'danger'
+  };
+  return types[status] || 'info';
 };
 </script>
 
 <style scoped>
 .data-factory-container {
-  padding: 20px;
-}
-
-.factory-header {
-  margin-bottom: 30px;
-  text-align: center;
-}
-
-.factory-header h2 {
-  font-size: 28px;
-  color: #1f2937;
-  margin-bottom: 10px;
-  font-weight: 600;
-}
-
-.factory-header p {
-  font-size: 16px;
-  color: #6b7280;
-  margin: 0;
+  height: 100%;
+  background: #f5f7fa;
 }
 
 .factory-content {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 24px;
-  margin-bottom: 30px;
+  padding: 24px;
+  height: 100%;
+  overflow-y: auto;
 }
 
-.factory-card {
+.tab-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.content-header {
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.content-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.content-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.generator-workspace {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 24px;
+}
+
+.workspace-left {
+  min-width: 0;
+}
+
+.workspace-right {
+  min-width: 0;
+}
+
+.config-panel {
+  background: white;
   border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
 }
 
-.card-header {
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.panel-header h4 {
+  margin: 0;
   font-size: 18px;
   font-weight: 600;
   color: #1f2937;
 }
 
-.tool-section {
-  margin-bottom: 20px;
-}
-
-.tool-section h4 {
-  margin: 0 0 16px 0;
-  color: #374151;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.template-list {
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.template-item {
+.field-list {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.field-item {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  margin-bottom: 12px;
+  padding: 16px;
   background: #f9fafb;
 }
 
-.template-info h5 {
-  margin: 0 0 4px 0;
-  color: #1f2937;
-  font-size: 14px;
-  font-weight: 600;
+.field-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.template-info p {
-  margin: 0 0 8px 0;
-  color: #6b7280;
-  font-size: 12px;
+.field-name {
+  flex: 1;
 }
 
-.template-type {
-  display: inline-block;
-  padding: 2px 8px;
-  background: #dbeafe;
-  color: #1e40af;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
+.field-type {
+  width: 120px;
 }
 
-.template-actions {
+.field-remove {
+  flex-shrink: 0;
+}
+
+.field-config {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.preview-dialog {
+.config-input {
+  width: 120px;
+}
+
+.enum-tag {
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+.enum-input {
+  width: 150px;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.template-card {
+  background: white;
   border-radius: 12px;
-}
-
-.preview-content {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.data-preview {
-  background: #f8fafc;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.no-data {
+  padding: 24px;
   text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.template-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.template-card.add-template {
+  border: 2px dashed #d1d5db;
+  color: #6b7280;
+}
+
+.template-card.add-template:hover {
+  border-color: #1d4ed8;
+  color: #1d4ed8;
+}
+
+.template-icon {
+  font-size: 48px;
+  color: #1d4ed8;
+  margin-bottom: 16px;
+}
+
+.template-card.add-template .template-icon {
   color: #9ca3af;
-  padding: 40px;
-  font-size: 16px;
+}
+
+.template-card.add-template:hover .template-icon {
+  color: #1d4ed8;
+}
+
+.template-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.template-card p {
+  margin: 0 0 16px 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.template-tags {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.batch-workspace {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.batch-upload {
+  margin-bottom: 32px;
+}
+
+.batch-tasks h4 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-  .factory-content {
+@media (max-width: 1200px) {
+  .generator-workspace {
     grid-template-columns: 1fr;
   }
   
-  .template-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+  .workspace-right {
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .factory-content {
+    padding: 16px;
   }
   
-  .template-actions {
-    width: 100%;
-    justify-content: flex-end;
+  .template-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style> 

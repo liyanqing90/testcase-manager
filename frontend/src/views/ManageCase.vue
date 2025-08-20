@@ -1063,21 +1063,20 @@ export default {
 
     // 获取状态标签类型
     getStatusType(status) {
+      if (!status) return 'info';
+      
       const statusMap = {
-        '通过': 'success',
-        '失败': 'danger',
-        '阻塞': 'warning',
         '跳过': 'info',
         '待执行': 'info',
         '执行中': 'warning',
-        'Draft': 'info',
         '未完成': 'info',
         'success': 'success',
         'failed': 'danger',
         'blocked': 'warning',
         'skipped': 'info',
         'pending': 'info',
-        'running': 'warning'
+        'running': 'warning',
+        'draft': 'info'
       };
       return statusMap[status] || 'info';
     },
@@ -1087,7 +1086,6 @@ export default {
       if (!status) return '未设置';
       
       const statusDisplayMap = {
-        'Draft': '未完成',
         'draft': '未完成',
         'success': '已完成',
         'failed': '失败',
