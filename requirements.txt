@@ -6,7 +6,7 @@ asyncio>=3.4.3
 pydantic>=2.4.2
 fastapi>=0.104.0
 uvicorn>=0.23.2
-browser_use
+browser_use==0.1.45
 playwright
 
 # Document processing
@@ -38,5 +38,5 @@ flake8>=6.1.0
 flask
 flask-cors
 flask-mysqldb
-openpyxl
 werkzeug
+
