@@ -468,12 +468,9 @@ QWEN_MODEL=qwen-turbo
 
 ## Changelog
 
-### Upcoming Planned Updates
-- [ ] Manual test case addition functionality
-- [ ] Execution logs
-- [ ] Test case execution functionality
-- [ ] Test report generation
-- [ ] User permission management
+### V1.0.3 (2025-08-22)
+- ✅  Manual test case addition functionality
+- ✅  Execution logs
 
 ### V1.0.2 (2025-08-12)
 - ✅ Optimized AI test case generation user experience
