@@ -1,21 +1,21 @@
 <template>
-  <div class="ai-config-container">
+  <div class="batch-generator-container">
     <div class="empty-page">
       <div class="empty-icon">
-        <el-icon><Setting /></el-icon>
+        <el-icon><Operation /></el-icon>
       </div>
-      <h2>AI配置</h2>
-      <p>AI配置功能开发中...</p>
+      <h2>批量生成</h2>
+      <p>批量生成功能开发中...</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { Setting } from '@element-plus/icons-vue';
+import { Operation } from '@element-plus/icons-vue';
 </script>
 
 <style scoped>
-.ai-config-container {
+.batch-generator-container {
   padding: 0;
   width: 100%;
   height: 100%;

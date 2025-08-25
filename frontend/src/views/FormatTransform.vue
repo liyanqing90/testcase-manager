@@ -1,21 +1,21 @@
 <template>
-  <div class="ai-config-container">
+  <div class="format-transform-container">
     <div class="empty-page">
       <div class="empty-icon">
-        <el-icon><Setting /></el-icon>
+        <el-icon><Switch /></el-icon>
       </div>
-      <h2>AI配置</h2>
-      <p>AI配置功能开发中...</p>
+      <h2>格式转换</h2>
+      <p>格式转换功能开发中...</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { Setting } from '@element-plus/icons-vue';
+import { Switch } from '@element-plus/icons-vue';
 </script>
 
 <style scoped>
-.ai-config-container {
+.format-transform-container {
   padding: 0;
   width: 100%;
   height: 100%;
