@@ -13,46 +13,19 @@ from src.schemas.communication import TestScenario
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# 使用 Azure OpenAI 配置
-gpt_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-gpt_base_url = os.getenv("AZURE_OPENAI_BASE_URL")
-gpt_model = os.getenv("AZURE_OPENAI_MODEL")
-gpt_model_version = os.getenv("AZURE_OPENAI_MODEL_VERSION")
 # 通义千问配置
 qwen_api_key = os.getenv("QWEN_API_KEY")
 qwen_base_url = os.getenv("QWEN_BASE_URL")
 qwen_model = os.getenv("QWEN_MODEL")
-#DS
-ds_api_key = os.getenv("DS_API_KEY")
-ds_base_url = os.getenv("DS_BASE_URL")
-ds_model_v3 = os.getenv("DS_MODEL_V3")
-ds_model_r1 = os.getenv("DS_MODEL_R1")
 
 
 class RequirementAnalystAgent:
     def __init__(self):
-        self.config_list_gpt = [
+        self.config_list = [
             {
-                "model": qwen_model,
-                "api_key": qwen_api_key,
-                "base_url": qwen_base_url,
-                "api_type": "openai",  # 修改为openai类型
-            }
-        ]
-
-        self.config_list_ds_v3 = [
-            {
-                "model": qwen_model,        # 修改为通义千问模型
-                "api_key": qwen_api_key,    # 修改为通义千问API Key
-                "base_url": qwen_base_url,  # 修改为通义千问URL
-            }
-        ]
-
-        self.config_list_ds_r1 = [
-            {
-                "model": qwen_model,        # 修改为通义千问模型
-                "api_key": qwen_api_key,    # 修改为通义千问API Key
-                "base_url": qwen_base_url,  # 修改为通义千问URL
+                "model": qwen_model,        # 通义千问模型
+                "api_key": qwen_api_key,    # 通义千问API Key
+                "base_url": qwen_base_url,  # 通义千问URL
             }
         ]
 
@@ -107,7 +80,7 @@ class RequirementAnalystAgent:
             3. 所有文本必须使用双引号
             4. JSON 必须是有效的且可解析的
             5. 每个测试场景必须包含所有必需字段（id、description、test_cases）''',
-            llm_config={"config_list": self.config_list_ds_v3}
+            llm_config={"config_list": self.config_list}
         )
 
         # 添加last_analysis属性，用于跟踪最近的分析结果

@@ -3,7 +3,7 @@
     <div class="logs-view">
     <!-- 日志条件过滤筛选区域 -->
     <div class="logs-filter-section">
-      <el-card class="filter-card" shadow="hover">
+      <el-card class="filter-card" shadow="never">
         <template #header>
           <div class="filter-header">
             <el-icon><Filter /></el-icon>
@@ -67,7 +67,7 @@
     
     <!-- 日志数据统计区域 -->
     <div class="logs-statistics-section">
-      <el-card class="statistics-card" shadow="hover">
+      <el-card class="statistics-card" shadow="never">
         <template #header>
           <div class="statistics-header">
             <el-icon><DataAnalysis /></el-icon>
@@ -136,7 +136,7 @@
     
     <!-- 实时日志监控区域 -->
     <div class="logs-monitor-section">
-      <el-card class="monitor-card" shadow="hover">
+      <el-card class="monitor-card" shadow="never">
         <template #header>
           <div class="monitor-header">
             <div class="monitor-title">
@@ -615,6 +615,8 @@ onUnmounted(() => {
 
 .filter-card {
   border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
 .filter-header {
@@ -645,6 +647,8 @@ onUnmounted(() => {
 
 .statistics-card {
   border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
 .statistics-header {
@@ -736,6 +740,8 @@ onUnmounted(() => {
 
 .monitor-card {
   border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
 .monitor-header {

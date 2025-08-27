@@ -8,20 +8,10 @@ from src.utils.agent_io import AgentIO
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# 使用 Azure OpenAI 配置
-gpt_api_key = os.getenv("AZURE_OPENAI_API_KEY")
-gpt_base_url = os.getenv("AZURE_OPENAI_BASE_URL")
-gpt_model = os.getenv("AZURE_OPENAI_MODEL")
-gpt_model_version = os.getenv("AZURE_OPENAI_MODEL_VERSION")
 # 通义千问配置
 qwen_api_key = os.getenv("QWEN_API_KEY")
 qwen_base_url = os.getenv("QWEN_BASE_URL")
 qwen_model = os.getenv("QWEN_MODEL")
-#DS
-ds_api_key = os.getenv("DS_API_KEY")
-ds_base_url = os.getenv("DS_BASE_URL")
-ds_model_v3 = os.getenv("DS_MODEL_V3")
-ds_model_r1 = os.getenv("DS_MODEL_R1")
 
 class QualityAssuranceAgent:
     def __init__(self, concurrent_workers: int = 1):
@@ -30,28 +20,11 @@ class QualityAssuranceAgent:
         Args:
             concurrent_workers: 并发工作线程数，默认为1（不使用并发）
         """
-        self.config_list_gpt = [
+        self.config_list = [
             {
-                "model": qwen_model,
-                "api_key": qwen_api_key,
-                "base_url": qwen_base_url,
-                "api_type": "openai",  # 修改为openai类型
-            }
-        ]
-
-        self.config_list_ds_v3 = [
-            {
-                "model": qwen_model,        # 修改为通义千问模型
-                "api_key": qwen_api_key,    # 修改为通义千问API Key
-                "base_url": qwen_base_url,  # 修改为通义千问URL
-            }
-        ]
-
-        self.config_list_ds_r1 = [
-            {
-                "model": qwen_model,        # 修改为通义千问模型
-                "api_key": qwen_api_key,    # 修改为通义千问API Key
-                "base_url": qwen_base_url,  # 修改为通义千问URL
+                "model": qwen_model,        # 通义千问模型
+                "api_key": qwen_api_key,    # 通义千问API Key
+                "base_url": qwen_base_url,  # 通义千问URL
             }
         ]
         
@@ -84,7 +57,7 @@ class QualityAssuranceAgent:
             2. 每个类别至少包含一条具体的改进建议
             3. 所有建议必须清晰、具体、可执行
             4. 不要返回任何JSON格式之外的文本内容""",
-            llm_config={"config_list": self.config_list_ds_v3}
+            llm_config={"config_list": self.config_list}
         )
         
         # 添加last_review属性，用于跟踪最近的审查结果

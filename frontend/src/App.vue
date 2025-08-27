@@ -109,7 +109,7 @@ const getMainTabText = () => {
     'upload': '用例上传',
     'ai-generate': 'AI生成用例',
     'logs': '运行日志',
-    'ai-config': 'AI配置',
+    'ai-config': '系统设置',
     'data-factory': '数据工厂',
     'manage': '项目用例管理'
   };
@@ -231,7 +231,7 @@ watch(() => route.path, (newPath) => {
                   <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </div>
-              <span v-show="!sidebarCollapsed">AI配置</span>
+              <span v-show="!sidebarCollapsed">系统设置</span>
             </div>
           </el-menu-item>
 

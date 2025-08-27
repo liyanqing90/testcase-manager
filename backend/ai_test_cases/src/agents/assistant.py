@@ -20,36 +20,13 @@ qwen_api_key = os.getenv("QWEN_API_KEY")      # 修改为通义千问API Key
 qwen_base_url = os.getenv("QWEN_BASE_URL")    # 修改为通义千问URL
 qwen_model = os.getenv("QWEN_MODEL")          # 修改为通义千问模型
 
-# 原来的 DeepSeek 配置
-ds_api_key = os.getenv("DS_API_KEY")
-ds_base_url = os.getenv("DS_BASE_URL")
-ds_model_v3 = os.getenv("DS_MODEL_V3")
-ds_model_r1 = os.getenv("DS_MODEL_R1")
-
 class AssistantAgent:
     def __init__(self, agents: List):
-        self.config_list_gpt = [
+        self.config_list = [
             {
-                "model": qwen_model,
-                "api_key": qwen_api_key,
-                "base_url": qwen_base_url,
-                "api_type": "openai",  # 修改为openai类型
-            }
-        ]
-
-        self.config_list_ds_v3 = [
-            {
-                "model": qwen_model,        # 修改为通义千问模型
-                "api_key": qwen_api_key,    # 修改为通义千问API Key
-                "base_url": qwen_base_url,  # 修改为通义千问URL
-            }
-        ]
-
-        self.config_list_ds_r1 = [
-            {
-                "model": qwen_model,        # 修改为通义千问模型
-                "api_key": qwen_api_key,    # 修改为通义千问API Key
-                "base_url": qwen_base_url,  # 修改为通义千问URL
+                "model": qwen_model,        # 通义千问模型
+                "api_key": qwen_api_key,    # 通义千问API Key
+                "base_url": qwen_base_url,  # 通义千问URL
             }
         ]
         
@@ -57,7 +34,7 @@ class AssistantAgent:
             name="coordinator",
             system_message="""你是一位项目协调员，负责管理不同测试代理之间的交互，
             确保工作流程的顺畅进行。""",
-            llm_config={"config_list": self.config_list_ds_v3}
+            llm_config={"config_list": self.config_list}
         )
         
         self.agents = agents

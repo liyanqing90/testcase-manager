@@ -43,6 +43,11 @@ export default defineConfig({
   ],
   server: {
     proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        timeout: 30000
+      },
       '/upload_case': {
         target: 'http://localhost:5000',
         changeOrigin: true,

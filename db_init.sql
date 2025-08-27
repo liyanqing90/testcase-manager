@@ -57,3 +57,17 @@ CREATE TABLE `ai_test_generation_history` (
   KEY `idx_generated_at` (`generated_at`),
   KEY `idx_filename` (`filename`)
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 创建AI配置表
+CREATE TABLE IF NOT EXISTS `ai_configs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `model_type` varchar(50) NOT NULL COMMENT 'AI模型类型',
+  `api_key` text NOT NULL COMMENT 'AI模型API密钥',
+  `model_url` text NOT NULL COMMENT 'AI模型URL地址',
+  `model_version` varchar(100) NOT NULL COMMENT 'AI模型版本',
+  `prompt_price_per_1k` DECIMAL(10,6) DEFAULT 0.001 COMMENT '每1000个prompt token的价格',
+  `completion_price_per_1k` DECIMAL(10,6) DEFAULT 0.002 COMMENT '每1000个completion token的价格',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

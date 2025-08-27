@@ -2,7 +2,7 @@
   <div class="ai-generate-case-root">
     <div class="ai-generate-cards-row">
       <!-- 需求文档上传卡片 -->
-      <el-card class="ai-generate-card ai-generate-upload-card" shadow="always">
+      <el-card class="ai-generate-card ai-generate-upload-card" shadow="never">
         <div class="ai-generate-card-title">上传需求</div>
         <div class="ai-generate-upload-vertical">
           <el-upload
@@ -27,7 +27,7 @@
         </div>
       </el-card>
       <!-- 参数选择卡片 -->
-      <el-card class="ai-generate-card ai-generate-param-card" shadow="hover">
+      <el-card class="ai-generate-card ai-generate-param-card" shadow="never">
         <div class="ai-generate-card-title">参数配置</div>
         <el-form :inline="false" class="ai-generate-form">
           <el-form-item label="输出文件名：">
@@ -52,7 +52,7 @@
         </div>
       </el-card>
       <!-- 下载区卡片 -->
-      <el-card class="ai-generate-card ai-generate-download-card" shadow="hover">
+      <el-card class="ai-generate-card ai-generate-download-card" shadow="never">
         <div class="ai-generate-card-title">用例下载</div>
         <div class="ai-generate-download-tip">生成成功后可在下载中心下载测试用例文件</div>
         <div class="ai-generate-download-center-btn">
@@ -650,7 +650,7 @@ async function fetchFileList() {
   max-height: 320px;
   margin-bottom: 0;
   border-radius: 22px;
-  box-shadow: 0 6px 32px 0 rgba(80,120,255,0.10), 0 1.5px 6px 0 rgba(0,0,0,0.04);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
   padding: 56px 32px 24px 32px;
   box-sizing: border-box;
   display: flex;
@@ -658,7 +658,7 @@ async function fetchFileList() {
   align-items: center;
   justify-content: center;
   background: #fff;
-  border: none;
+  border: 1px solid #e2e8f0;
   position: relative;
 }
 .ai-generate-card-title {
@@ -677,17 +677,14 @@ async function fetchFileList() {
   z-index: 2;
 }
 .ai-generate-upload-card {
-  background: linear-gradient(135deg, #FFFFFF 100%, #38bdf8 100%);
-  box-shadow: 0 8px 32px 0 rgba(56,189,248,0.10), 0 2px 8px 0 rgba(0,0,0,0.04);
+  background: #fff;
   padding-top: 0 !important;
 }
 .ai-generate-param-card {
-  background: linear-gradient(135deg, #FFFFFF 100%, #c145feb3 100%);
-  box-shadow: 0 8px 32px 0 rgba(193,69,254,0.08), 0 2px 8px 0 rgba(0,0,0,0.04);
+  background: #fff;
 }
 .ai-generate-download-card {
-  background: linear-gradient(135deg, #FFFFFF 100%, #45fe88a8 100%);
-  box-shadow: 0 8px 32px 0 rgba(69,254,136,0.08), 0 2px 8px 0 rgba(0,0,0,0.04);
+  background: #fff;
 }
 .ai-generate-upload-card .ai-generate-card-title {
   margin-top: 8px !important;

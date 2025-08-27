@@ -30,11 +30,13 @@ def create_app():
     from routes.upload import upload_bp
     from routes.ai_generate import ai_generate_bp
     from routes.logs import logs_bp
+    from routes.ai_config import ai_config_bp
     app.register_blueprint(test_case_bp, url_prefix='/test_case')
     app.register_blueprint(project_bp, url_prefix='/project')
     app.register_blueprint(upload_bp)
     app.register_blueprint(ai_generate_bp, url_prefix='/ai_generate')
     app.register_blueprint(logs_bp, url_prefix='/logs')
+    app.register_blueprint(ai_config_bp, url_prefix='/api')
 
     @app.route('/health')
     def health():
