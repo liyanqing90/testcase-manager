@@ -19,8 +19,10 @@ ai_generate_bp = Blueprint('ai_generate', __name__)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ai_test_cases', 'docs')
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'md', 'txt'}
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 @ai_generate_bp.route('/upload', methods=['POST'])
 def upload_document():
@@ -28,32 +30,32 @@ def upload_document():
     try:
         if 'file' not in request.files:
             return jsonify({'error': '没有文件上传'}), 400
-        
+
         file = request.files['file']
         if file.filename == '':
             return jsonify({'error': '没有选择文件'}), 400
-        
+
         if file and allowed_file(file.filename):
             # 获取原始文件名和扩展名
             original_filename = file.filename
             name, ext = os.path.splitext(original_filename)
-            
+
             # 生成安全的文件名，但保留扩展名
             safe_name = secure_filename(name)
             if not safe_name:  # 如果安全文件名为空，使用默认名称
                 safe_name = "document"
-            
+
             # 添加时间戳避免重名
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"{timestamp}_{safe_name}{ext}"
-            
+
             # 确保上传目录存在
             os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-            
+
             # 保存文件
             file_path = os.path.join(UPLOAD_FOLDER, filename)
             file.save(file_path)
-            
+
             return jsonify({
                 'success': True,
                 'filename': filename,
@@ -62,9 +64,10 @@ def upload_document():
             })
         else:
             return jsonify({'error': '不支持的文件格式'}), 400
-            
+
     except Exception as e:
         return jsonify({'error': f'上传失败: {str(e)}'}), 500
+
 
 @ai_generate_bp.route('/generate', methods=['POST'])
 def generate_test_cases():
@@ -75,37 +78,38 @@ def generate_test_cases():
         output_filename = data.get('output_filename', 'test_cases.xlsx')
         test_type = data.get('test_type', 'functional')
         concurrency = data.get('concurrency', 1)
-        
+
         if not filename:
             return jsonify({'error': '文件名不能为空'}), 400
-        
+
         # 构建文件路径
         doc_path = os.path.join(UPLOAD_FOLDER, filename)
         if not os.path.exists(doc_path):
             return jsonify({'error': '文件不存在'}), 404
-        
+
         # 确保输出文件名有.xlsx扩展名
         if not output_filename.endswith('.xlsx'):
             if output_filename:
                 output_filename = output_filename + '.xlsx'
             else:
                 output_filename = 'test_cases.xlsx'
-        
+
         # 构建输出路径
         output_path = os.path.join(os.path.dirname(UPLOAD_FOLDER), output_filename)
-        
+
         # 构建AI生成系统的命令
         ai_main_path = os.path.join(os.path.dirname(UPLOAD_FOLDER), 'src', 'main.py')
-        template_path = os.path.join(os.path.dirname(UPLOAD_FOLDER), 'src', 'templates', f'{test_type}_test_template.json')
-        
+        template_path = os.path.join(os.path.dirname(UPLOAD_FOLDER), 'src', 'templates',
+                                     f'{test_type}_test_template.json')
+
         # 使用绝对路径，确保路径正确
         python_executable = os.path.abspath(sys.executable)
         ai_main_path_abs = os.path.abspath(ai_main_path)
         doc_path_abs = os.path.abspath(doc_path)
         output_path_abs = os.path.abspath(output_path)
-        
+
         cmd = f'"{python_executable}" "{ai_main_path_abs}" -d "{doc_path_abs}" -t {test_type} -o "{output_path_abs}" -c {concurrency}'
-        
+
         # 执行AI生成系统
         try:
             result = subprocess.run(
@@ -118,7 +122,7 @@ def generate_test_cases():
                 cwd=os.path.dirname(UPLOAD_FOLDER),  # 设置工作目录
                 timeout=1800  # 30分钟超时，因为AI系统需要很长时间处理多层过滤
             )
-            
+
             if result.returncode == 0:
                 # 检查输出文件是否存在
                 if os.path.exists(output_path):
@@ -142,14 +146,15 @@ def generate_test_cases():
                     'stdout': result.stdout,
                     'stderr': result.stderr
                 }), 500
-                
+
         except subprocess.TimeoutExpired:
             return jsonify({'error': '生成超时（30分钟），AI系统需要更长时间处理复杂的多层过滤逻辑，请稍后重试'}), 408
         except Exception as e:
             return jsonify({'error': f'执行失败: {str(e)}'}), 500
-            
+
     except Exception as e:
         return jsonify({'error': f'生成失败: {str(e)}'}), 500
+
 
 @ai_generate_bp.route('/download/<filename>', methods=['GET'])
 def download_file(filename):
@@ -157,10 +162,10 @@ def download_file(filename):
     try:
         # 构建文件路径
         file_path = os.path.join(os.path.dirname(UPLOAD_FOLDER), filename)
-        
+
         if not os.path.exists(file_path):
             return jsonify({'error': '文件不存在'}), 404
-        
+
         # 发送文件
         return send_file(
             file_path,
@@ -168,9 +173,10 @@ def download_file(filename):
             download_name=filename,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        
+
     except Exception as e:
         return jsonify({'error': f'下载失败: {str(e)}'}), 500
+
 
 @ai_generate_bp.route('/files', methods=['GET'])
 def list_generated_files():
@@ -178,7 +184,7 @@ def list_generated_files():
     try:
         ai_test_cases_dir = os.path.dirname(UPLOAD_FOLDER)
         files = []
-        
+
         for filename in os.listdir(ai_test_cases_dir):
             if filename.endswith('.xlsx'):
                 file_path = os.path.join(ai_test_cases_dir, filename)
@@ -189,15 +195,15 @@ def list_generated_files():
                     'created_at': datetime.fromtimestamp(file_stat.st_ctime).isoformat(),
                     'modified_at': datetime.fromtimestamp(file_stat.st_mtime).isoformat()
                 })
-        
+
         # 按修改时间排序，最新的在前
         files.sort(key=lambda x: x['modified_at'], reverse=True)
-        
+
         return jsonify({
             'success': True,
             'files': files
         })
-        
+
     except Exception as e:
         return jsonify({'error': f'获取文件列表失败: {str(e)}'}), 500
 
@@ -213,7 +219,7 @@ def get_generated_file_summary():
         test_type = request.args.get('test_type', 'functional')  # 获取用户选择的测试类型
         if not filename:
             return jsonify({'error': '缺少参数: file'}), 400
-        
+
         # 组装文件路径（生成文件保存于 ai_test_cases 目录）
         ai_test_cases_dir = os.path.dirname(UPLOAD_FOLDER)
         file_path = os.path.join(ai_test_cases_dir, filename)
@@ -295,7 +301,7 @@ def get_generated_file_summary():
             'ui_auto': 'UI自动化测试'
         }
         selected_test_type = test_type_mapping.get(test_type, '功能测试')
-        
+
         # 构建要存储到数据库的case_types，只包含用户选择的测试类型
         db_case_types = [selected_test_type]
 
@@ -304,8 +310,8 @@ def get_generated_file_summary():
             'priority_counts': priority_counts,
             'category_counts': db_case_types,  # 返回用户选择的测试类型，而不是Excel中的实际分布
             'functional_test_count': category_counts.get('功能测试', 0),  # 添加真正的功能测试用例数
-            'api_test_count': category_counts.get('接口测试', 0),        # 添加真正的接口测试用例数
-            'ui_auto_test_count': category_counts.get('UI自动化测试', 0), # 添加真正的UI自动化测试用例数
+            'api_test_count': category_counts.get('接口测试', 0),  # 添加真正的接口测试用例数
+            'ui_auto_test_count': category_counts.get('UI自动化测试', 0),  # 添加真正的UI自动化测试用例数
             'file_size': file_stat.st_size,
             'created_at': created_at,
             'modified_at': modified_at
@@ -314,16 +320,16 @@ def get_generated_file_summary():
         # 保存汇总数据到数据库（防重复插入）
         try:
             cur = mysql.connection.cursor()
-            
+
             # 先检查是否已存在相同文件名的记录
             cur.execute("""
                 SELECT id FROM ai_test_generation_history 
                 WHERE filename = %s
                 LIMIT 1
             """, (filename,))
-            
+
             existing_record = cur.fetchone()
-            
+
             if existing_record:
                 # 如果已存在，则更新现有记录
                 cur.execute("""
@@ -363,7 +369,7 @@ def get_generated_file_summary():
                     filename
                 ))
                 print(f"插入新记录: {filename}")
-            
+
             mysql.connection.commit()
             cur.close()
         except Exception as db_error:
@@ -392,34 +398,34 @@ def get_latest_generation_summary():
         """)
         result = cur.fetchone()
         cur.close()
-        
+
         if not result:
             return jsonify({
                 'success': True,
                 'summary': None
             })
-        
+
         # 解析JSON字段
         case_types = json.loads(result['case_types']) if result['case_types'] else {}
         priority_distribution = json.loads(result['priority_distribution']) if result['priority_distribution'] else {}
-        
+
         summary_data = {
             'total_cases': result['total_cases'],
             'priority_counts': priority_distribution,
             'category_counts': case_types,
             'functional_test_count': result['functional_test_count'],  # 添加真正的功能测试用例数
-            'api_test_count': result['api_test_count'],                # 添加真正的接口测试用例数
-            'ui_auto_test_count': result['ui_auto_test_count'],        # 添加真正的UI自动化测试用例数
+            'api_test_count': result['api_test_count'],  # 添加真正的接口测试用例数
+            'ui_auto_test_count': result['ui_auto_test_count'],  # 添加真正的UI自动化测试用例数
             'file_size': result['estimated_file_size'],
             'created_at': result['generated_at'].isoformat() if result['generated_at'] else None,
             'modified_at': result['generated_at'].isoformat() if result['generated_at'] else None,
             'filename': result['filename']
         }
-        
+
         return jsonify({
             'success': True,
             'summary': summary_data
         })
-        
+
     except Exception as e:
-        return jsonify({'error': f'获取最新汇总失败: {str(e)}'}), 500 
+        return jsonify({'error': f'获取最新汇总失败: {str(e)}'}), 500
