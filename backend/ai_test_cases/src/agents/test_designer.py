@@ -8,6 +8,8 @@ from typing import Dict, List
 import logging
 from dotenv import load_dotenv
 from src.utils.agent_io import AgentIO
+from src.utils.json_parser import UnifiedJSONParser
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,9 @@ class TestDesignerAgent:
         
         # 初始化AgentIO用于保存和加载设计结果
         self.agent_io = AgentIO()
+        
+        # 初始化统一的JSON解析器
+        self.json_parser = UnifiedJSONParser()
         
         self.agent = autogen.AssistantAgent(
             name="test_designer",
@@ -217,114 +222,51 @@ class TestDesignerAgent:
             # 打印原始响应以便调试
             logger.info(f"AI响应内容: {response_str[:200]}...")  # 只打印前200个字符避免日志过长
             
-            # 尝试从响应中提取JSON部分 - 支持多种格式
-            json_match = re.search(r'```(?:json)?\s*({\s*".*?})\s*```', response_str, re.DOTALL)
-            if not json_match:
-                # 尝试直接从响应中查找JSON对象
-                json_match = re.search(r'({[\s\S]*"test_approach"[\s\S]*})', response_str)
+            # 使用统一的JSON解析器
+            test_strategy = self.json_parser.parse(response_str, "test_design")
             
-            if json_match:
-                try:
-                    # 提取JSON字符串并解析
-                    json_str = json_match.group(1)
-                    # 清理可能的格式问题
-                    json_str = json_str.strip()
-                    # print(f"json_str_type: {type(json_str)}  ")
-                    json_str = re.sub(r'```json|```', '', json_str)
-                    json_str = json_str.replace(r'\n', '\n').replace(r'\"', '"')
-                    
-                    # 尝试修复常见的JSON格式问题
-                    json_str = self._fix_json_format(json_str)
-                    
-                    # 首先尝试直接解析JSON
-                    try:
-                        test_strategy = json.loads(json_str)
-                        logger.info("成功直接解析JSON响应")
-                    except json.JSONDecodeError as e:
-                        logger.info(f"直接JSON解析失败: {str(e)}，尝试修复后重新解析")
-                        # 尝试更强的JSON修复
-                        json_str = self._fix_json_aggressive(json_str)
+            if test_strategy:
+                # 确保test_strategy是字典类型
+                if isinstance(test_strategy, str):
+                    test_strategy = json.loads(test_strategy)
+                
+                # 处理包装的数据结构：检查是否包含content字段
+                if isinstance(test_strategy, dict) and 'content' in test_strategy:
+                    logger.info("检测到包装的数据结构，提取content字段")
+                    content_str = test_strategy['content']
+                    if isinstance(content_str, str):
                         try:
-                            test_strategy = json.loads(json_str)
-                            logger.info("修复后JSON解析成功")
-                        except json.JSONDecodeError:
-                            logger.info("修复后JSON解析仍然失败，尝试Python字典格式解析")
-                            # 尝试Python字典格式解析
-                            try:
-                                # print(f"content 的字符串内容：{json_str}")
-                                json_str_fix = re.sub(r"'content':\s*'(.*?)'",  # 匹配content字段的值
-                                    lambda m: "'content': '''{}'''".format(m.group(1).replace("'''", "\\'''")),  # 转换为三重引号
-                                    json_str,
-                                    flags=re.DOTALL
-                                )
-                                json_init_dict = ast.literal_eval(json_str_fix)
-                                # print(f"json_init_dict 类型：{type(json_init_dict)}")
-                                json_str = json.dumps(json_init_dict["content"])
-                                test_strategy = json.loads(json_str)
-                                logger.info("成功从Python字典格式解析测试策略")
-                            except Exception as e:
-                                logger.warning(f"Python字典格式解析失败: {str(e)}，尝试备用方法")
-                                # 尝试备用JSON提取
-                                test_strategy = self._extract_json_fallback(response_str)
-                                if not test_strategy:
-                                    logger.error("所有解析方法都失败了，记录详细信息用于调试")
-                                    logger.error(f"原始响应内容: {response_str[:500]}...")
-                                    logger.error(f"提取的JSON字符串: {json_str[:500]}...")
-                                    logger.error(f"修复后的JSON字符串: {json_str[:500]}...")
-                                    
-                                    # 尝试最后的备用策略：从响应中提取关键信息
-                                    test_strategy = self._extract_fallback_from_text(response_str)
-                                    if not test_strategy:
-                                        raise Exception("所有解析方法都失败了，包括文本提取备用策略")
-                                    else:
-                                        logger.info("文本提取备用策略成功")
-                    
-                    # 确保test_strategy是字典类型
-                    if isinstance(test_strategy, str):
-                        test_strategy = json.loads(test_strategy)
-                    
-                    # 保存设计结果到last_design属性
-                    self.last_design = test_strategy
-                    
-                    # 将设计结果保存到文件
-                    self.agent_io.save_result("test_designer", test_strategy)
-            
-                    logger.info("测试设计完成")
-
-                    return test_strategy
-
-                except Exception as e:
-                    logger.error(f"测试设计错误: {str(e)}")
-                    # 尝试更宽松的JSON提取
-                    test_strategy = self._extract_json_fallback(response_str)
-                    if test_strategy:
-                        return test_strategy
-                    
-                    # 尝试文本提取备用策略
-                    test_strategy = self._extract_fallback_from_text(response_str)
-                    if test_strategy:
-                        return test_strategy
-                    
-                    # 发生异常时返回默认结构
-                    logger.warning("所有解析方法都失败，返回默认测试策略结构")
-                    return {
-                        "test_approach": {
-                            "methodology": [],
-                            "tools": [],
-                            "frameworks": []
-                        },
-                        "coverage_matrix": [],
-                        "priorities": [],
-                        "resource_estimation": {
-                            "time": None,
-                            "personnel": None,
-                            "tools": [],
-                            "additional_resources": []
-                        }
-                    }
+                            # 解析content字段中的JSON字符串
+                            actual_data = json.loads(content_str)
+                            logger.info(f"成功从content字段提取数据: {actual_data}")
+                            test_strategy = actual_data
+                        except json.JSONDecodeError as e:
+                            logger.error(f"解析content字段中的JSON失败: {str(e)}")
+                            logger.warning("将使用原始test_strategy进行规范化")
+                    else:
+                        logger.warning(f"content字段不是字符串类型: {type(content_str)}")
+                        test_strategy = content_str
+                
+                # 验证和规范化数据结构，确保符合TestDesignResponse模型要求
+                normalized_strategy = self._normalize_test_strategy(test_strategy)
+                
+                # 保存设计结果到last_design属性
+                self.last_design = normalized_strategy
+                
+                # 将设计结果保存到文件
+                self.agent_io.save_result("test_designer", normalized_strategy)
+                
+                logger.info("测试设计完成")
+                return normalized_strategy
             else:
-                # 如果无法提取JSON，返回默认结构
-                logger.warning("无法从响应中提取JSON格式的测试策略")
+                # 如果无法解析JSON，尝试文本提取备用策略
+                logger.warning("无法从响应中提取JSON格式的测试策略，尝试文本提取")
+                test_strategy = self._extract_fallback_from_text(response_str)
+                if test_strategy:
+                    return test_strategy
+                
+                # 如果文本提取也失败，返回默认结构
+                logger.warning("所有解析方法都失败，返回默认测试策略结构")
                 return {
                     "test_approach": {
                         "methodology": [],
@@ -359,167 +301,185 @@ class TestDesignerAgent:
                     "additional_resources": []
                 }
             }
+
+
     
-    def _fix_json_format(self, json_str: str) -> str:
-        """修复常见的JSON格式问题"""
-        try:
-            # 修复常见的引号问题
-            json_str = re.sub(r'([^\\])"([^"]*?)([^\\])"', r'\1"\2\3"', json_str)
-            
-            # 修复可能的换行符问题
-            json_str = json_str.replace('\n', '\\n').replace('\r', '\\r')
-            
-            # 修复可能的制表符问题
-            json_str = json_str.replace('\t', '\\t')
-            
-            # 尝试修复不完整的JSON
-            if json_str.strip().startswith('{') and not json_str.strip().endswith('}'):
-                # 找到最后一个完整的键值对
-                last_complete_pair = max(
-                    json_str.rfind('",'),
-                    json_str.rfind('"],'),
-                    json_str.rfind('"},')
-                )
-                if last_complete_pair > 0:
-                    json_str = json_str[:last_complete_pair+2] + '}'
-            
-            return json_str
-        except Exception as e:
-            logger.warning(f"JSON格式修复失败: {str(e)}")
-            return json_str
+
     
-    def _fix_json_aggressive(self, json_str: str) -> str:
-        """更强的JSON修复方法，处理更严重的格式问题"""
+
+    
+
+    
+    def _normalize_test_strategy(self, test_strategy: Dict) -> Dict:
+        """验证和规范化测试策略数据结构，确保符合TestDesignResponse模型要求"""
         try:
-            # 修复缺少逗号的问题
-            # 在数组元素之间添加逗号
-            json_str = re.sub(r'(\])\s*(\[)', r'\1,\2', json_str)
+            logger.info(f"开始规范化测试策略数据结构，输入: {test_strategy}")
             
-            # 在对象属性之间添加逗号
-            json_str = re.sub(r'(")\s*(")', r'\1,\2', json_str)
-            
-            # 修复缺少引号的属性名
-            json_str = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
-            
-            # 修复缺少引号的字符串值
-            json_str = re.sub(r':\s*([a-zA-Z][a-zA-Z0-9\s]*?)([,}])', r': "\1"\2', json_str)
-            
-            # 修复数组中的字符串值
-            json_str = re.sub(r'\[\s*([a-zA-Z][a-zA-Z0-9\s]*?)\s*([,\]])', r'["\1"\2', json_str)
-            
-            # 修复对象结尾缺少大括号
-            if json_str.strip().startswith('{') and not json_str.strip().endswith('}'):
-                # 尝试找到最后一个有效的属性
-                last_valid_pos = max(
-                    json_str.rfind('",'),
-                    json_str.rfind('"],'),
-                    json_str.rfind('"},'),
-                    json_str.rfind('"')
-                )
-                if last_valid_pos > 0:
-                    if json_str[last_valid_pos] == ',':
-                        json_str = json_str[:last_valid_pos] + '}'
-                    elif json_str[last_valid_pos] == '"':
-                        json_str = json_str[:last_valid_pos+1] + '}'
+            # 确保所有必需字段都存在且格式正确
+            normalized = {
+                "test_approach": {
+                    "methodology": [],
+                    "tools": [],
+                    "frameworks": []
+                },
+                "coverage_matrix": [],
+                "priorities": [],
+                "resource_estimation": {
+                    "time": None,
+                    "personnel": None,
+                    "tools": [],
+                    "additional_resources": []
+                }
+            }
+    
+            # 处理test_approach字段
+            if "test_approach" in test_strategy and isinstance(test_strategy["test_approach"], dict):
+                approach = test_strategy["test_approach"]
+                logger.debug(f"处理test_approach字段: {approach}")
+                
+                # 处理methodology字段
+                if "methodology" in approach:
+                    methodology = approach["methodology"]
+                    if isinstance(methodology, list):
+                        normalized["test_approach"]["methodology"] = methodology
+                        logger.debug(f"设置methodology: {methodology}")
+                    elif isinstance(methodology, str):
+                        normalized["test_approach"]["methodology"] = [methodology]
+                        logger.debug(f"将methodology字符串转换为列表: {[methodology]}")
                     else:
-                        json_str = json_str[:last_valid_pos+2] + '}'
-            
-            # 修复数组结尾缺少方括号
-            if json_str.strip().startswith('[') and not json_str.strip().endswith(']'):
-                last_valid_pos = max(
-                    json_str.rfind('",'),
-                    json_str.rfind('},'),
-                    json_str.rfind('"'),
-                    json_str.rfind('}')
-                )
-                if last_valid_pos > 0:
-                    if json_str[last_valid_pos] == ',':
-                        json_str = json_str[:last_valid_pos] + ']'
-                    elif json_str[last_valid_pos] in ['"', '}']:
-                        json_str = json_str[:last_valid_pos+1] + ']'
+                        logger.warning(f"methodology字段类型不正确: {type(methodology)}, 值: {methodology}")
+                
+                # 处理tools字段
+                if "tools" in approach:
+                    tools = approach["tools"]
+                    if isinstance(tools, list):
+                        normalized["test_approach"]["tools"] = tools
+                        logger.debug(f"设置tools: {tools}")
+                    elif isinstance(tools, str):
+                        normalized["test_approach"]["tools"] = [tools]
+                        logger.debug(f"将tools字符串转换为列表: {[tools]}")
                     else:
-                        json_str = json_str[:last_valid_pos+2] + ']'
+                        logger.warning(f"tools字段类型不正确: {type(tools)}, 值: {tools}")
+                
+                # 处理frameworks字段
+                if "frameworks" in approach:
+                    frameworks = approach["frameworks"]
+                    if isinstance(frameworks, list):
+                        normalized["test_approach"]["frameworks"] = frameworks
+                        logger.debug(f"设置frameworks: {frameworks}")
+                    elif isinstance(frameworks, str):
+                        normalized["test_approach"]["frameworks"] = [frameworks]
+                        logger.debug(f"将frameworks字符串转换为列表: {[frameworks]}")
+                    else:
+                        logger.warning(f"frameworks字段类型不正确: {type(frameworks)}, 值: {frameworks}")
+            else:
+                logger.warning(f"test_approach字段缺失或格式不正确: {test_strategy.get('test_approach', 'Not found')}")
             
-            return json_str
+            # 处理coverage_matrix字段
+            if "coverage_matrix" in test_strategy:
+                coverage_matrix = test_strategy["coverage_matrix"]
+                if isinstance(coverage_matrix, list):
+                    normalized["coverage_matrix"] = coverage_matrix
+                    logger.debug(f"设置coverage_matrix: {coverage_matrix}")
+                elif isinstance(coverage_matrix, str):
+                    normalized["coverage_matrix"] = [coverage_matrix]
+                    logger.debug(f"将coverage_matrix字符串转换为列表: {[coverage_matrix]}")
+                else:
+                    logger.warning(f"coverage_matrix字段类型不正确: {type(coverage_matrix)}, 值: {coverage_matrix}")
+            else:
+                logger.warning("coverage_matrix字段缺失")
+            
+            # 处理priorities字段
+            if "priorities" in test_strategy:
+                priorities = test_strategy["priorities"]
+                if isinstance(priorities, list):
+                    normalized["priorities"] = priorities
+                    logger.debug(f"设置priorities: {priorities}")
+                elif isinstance(priorities, str):
+                    normalized["priorities"] = [priorities]
+                    logger.debug(f"将priorities字符串转换为列表: {[priorities]}")
+                else:
+                    logger.warning(f"priorities字段类型不正确: {type(priorities)}, 值: {priorities}")
+            else:
+                logger.warning("priorities字段缺失")
+            
+            # 处理resource_estimation字段
+            if "resource_estimation" in test_strategy and isinstance(test_strategy["resource_estimation"], dict):
+                estimation = test_strategy["resource_estimation"]
+                logger.debug(f"处理resource_estimation字段: {estimation}")
+                
+                # 处理time字段
+                if "time" in estimation:
+                    normalized["resource_estimation"]["time"] = estimation["time"]
+                    logger.debug(f"设置time: {estimation['time']}")
+                
+                # 处理personnel字段
+                if "personnel" in estimation:
+                    normalized["resource_estimation"]["personnel"] = estimation["personnel"]
+                    logger.debug(f"设置personnel: {estimation['personnel']}")
+                
+                # 处理tools字段
+                if "tools" in estimation:
+                    tools = estimation["tools"]
+                    if isinstance(tools, list):
+                        normalized["resource_estimation"]["tools"] = tools
+                        logger.debug(f"设置resource_estimation.tools: {tools}")
+                    elif isinstance(tools, str):
+                        normalized["resource_estimation"]["tools"] = [tools]
+                        logger.debug(f"将resource_estimation.tools字符串转换为列表: {[tools]}")
+                    else:
+                        logger.warning(f"resource_estimation.tools字段类型不正确: {type(tools)}, 值: {tools}")
+                
+                # 处理additional_resources字段
+                if "additional_resources" in estimation:
+                    additional_resources = estimation["additional_resources"]
+                    if isinstance(additional_resources, list):
+                        normalized["resource_estimation"]["additional_resources"] = additional_resources
+                        logger.debug(f"设置additional_resources: {additional_resources}")
+                    elif isinstance(additional_resources, str):
+                        normalized["resource_estimation"]["additional_resources"] = [additional_resources]
+                        logger.debug(f"将additional_resources字符串转换为列表: {[additional_resources]}")
+                    else:
+                        logger.warning(f"additional_resources字段类型不正确: {type(additional_resources)}, 值: {additional_resources}")
+            else:
+                logger.warning(f"resource_estimation字段缺失或格式不正确: {test_strategy.get('resource_estimation', 'Not found')}")
+            
+            # 确保所有列表字段都是列表类型
+            for field in ["methodology", "tools", "frameworks"]:
+                if not isinstance(normalized["test_approach"][field], list):
+                    normalized["test_approach"][field] = []
+            
+            for field in ["coverage_matrix", "priorities"]:
+                if not isinstance(normalized[field], list):
+                    normalized[field] = []
+            
+            for field in ["tools", "additional_resources"]:
+                if not isinstance(normalized["resource_estimation"][field], list):
+                    normalized["resource_estimation"][field] = []
+            
+            logger.info(f"测试策略数据结构已规范化，输出: {normalized}")
+            return normalized
+            
         except Exception as e:
-            logger.warning(f"强JSON修复失败: {str(e)}")
-            return json_str
-    
-    def _extract_json_fallback(self, response_str: str) -> Dict:
-        """备用JSON提取方法，使用更宽松的匹配"""
-        try:
-            # 尝试查找包含关键字段的JSON对象
-            patterns = [
-                r'\{[^{}]*"test_approach"[^{}]*\}',
-                r'\{[^{}]*"coverage_matrix"[^{}]*\}',
-                r'\{[^{}]*"priorities"[^{}]*\}'
-            ]
-            
-            for pattern in patterns:
-                matches = re.findall(pattern, response_str, re.DOTALL)
-                if matches:
-                    # 尝试扩展匹配到完整的JSON对象
-                    for match in matches:
-                        # 向前和向后扩展查找完整的JSON
-                        start_pos = response_str.find(match)
-                        if start_pos >= 0:
-                            # 向前查找开始的大括号
-                            brace_count = 0
-                            start_brace = start_pos
-                            for i in range(start_pos, -1, -1):
-                                if response_str[i] == '{':
-                                    brace_count += 1
-                                elif response_str[i] == '}':
-                                    brace_count -= 1
-                                if brace_count == 1:
-                                    start_brace = i
-                                    break
-                            
-                            # 向后查找结束的大括号
-                            brace_count = 0
-                            end_brace = start_pos + len(match)
-                            for i in range(start_pos + len(match), len(response_str)):
-                                if response_str[i] == '{':
-                                    brace_count += 1
-                                elif response_str[i] == '}':
-                                    brace_count -= 1
-                                if brace_count == 0:
-                                    end_brace = i + 1
-                                    break
-                            
-                            # 提取完整的JSON
-                            full_json = response_str[start_brace:end_brace]
-                            try:
-                                # 尝试修复和解析
-                                fixed_json = self._fix_json_format(full_json)
-                                parsed_result = json.loads(fixed_json)
-                                if isinstance(parsed_result, dict):
-                                    return self._build_structured_result(parsed_result)
-                            except Exception:
-                                continue
-            
-            return None
-        except Exception as e:
-            logger.warning(f"备用JSON提取失败: {str(e)}")
-            return None
-    
-    def _build_structured_result(self, parsed_result: Dict) -> Dict:
-        """构建结构化的测试策略结果"""
-        return {
+            logger.error(f"规范化测试策略数据结构时出错: {str(e)}")
+            # 返回默认结构
+            default_structure = {
             "test_approach": {
-                "methodology": parsed_result.get("methodology", []),
-                "tools": parsed_result.get("tools", []),
-                "frameworks": parsed_result.get("frameworks", [])
-            },
-            "coverage_matrix": parsed_result.get("coverage_matrix", []),
-            "priorities": parsed_result.get("priorities", []),
-            "resource_estimation": parsed_result.get("resource_estimation", {
+                    "methodology": [],
+                    "tools": [],
+                    "frameworks": []
+                },
+                "coverage_matrix": [],
+                "priorities": [],
+                "resource_estimation": {
                 "time": None,
                 "personnel": None,
                 "tools": [],
                 "additional_resources": []
-            })
         }
+            }
+            logger.warning(f"返回默认结构: {default_structure}")
+            return default_structure
     
     def _extract_fallback_from_text(self, response_str: str) -> Dict:
         """从文本响应中提取测试策略信息的备用方法"""

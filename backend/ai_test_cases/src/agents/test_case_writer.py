@@ -7,6 +7,8 @@ from typing import Dict, List, Union
 import logging
 from dotenv import load_dotenv
 from src.utils.agent_io import AgentIO
+from src.utils.json_parser import UnifiedJSONParser
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,9 @@ class TestCaseWriterAgent:
         
         # 初始化AgentIO用于保存和加载测试用例
         self.agent_io = AgentIO()
+        
+        # 初始化统一的JSON解析器
+        self.json_parser = UnifiedJSONParser()
         
         # 设置并发工作线程数
         self.concurrent_workers = max(1, concurrent_workers)  # 确保至少为1
@@ -359,79 +364,35 @@ class TestCaseWriterAgent:
                 logger.error(f"消息不是字符串类型: {type(message)}")
                 return []
             
-            # 尝试解析JSON格式的响应
-            import json
-            import re
+            # 使用统一的JSON解析器
+            json_data = self.json_parser.parse(message, "test_case_generation")
             
-            # 方法1: 尝试提取JSON代码块
-            json_match = re.search(r'``json\s*(.*?)\s*```', message, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(1)
-                try:
-                    json_data = json.loads(json_str)
-                    if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                        logger.info(f"成功从JSON代码块中解析出 {len(json_data['test_cases'])} 个测试用例")
+            if json_data and 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
+                logger.info(f"成功从JSON响应中解析出 {len(json_data['test_cases'])} 个测试用例")
+                
+                # 验证和规范化测试用例
+                validated_test_cases = []
+                for test_case in json_data['test_cases']:
+                    # 确保所有必需字段都存在
+                    if self._validate_test_case(test_case):
+                        # 规范化优先级格式（确保是P0、P1等格式）
+                        if 'priority' in test_case and not test_case['priority'].startswith('P'):
+                            test_case['priority'] = f"P{test_case['priority']}" if test_case['priority'].isdigit() else test_case['priority']
                         
-                        # 验证和规范化测试用例
-                        validated_test_cases = []
-                        for test_case in json_data['test_cases']:
-                            # 确保所有必需字段都存在
-                            if self._validate_test_case(test_case):
-                                # 规范化优先级格式（确保是P0、P1等格式）
-                                if 'priority' in test_case and not test_case['priority'].startswith('P'):
-                                    test_case['priority'] = f"P{test_case['priority']}" if test_case['priority'].isdigit() else test_case['priority']
-                                
-                                # 确保类别字段存在且有意义
-                                if 'category' not in test_case or not test_case['category']:
-                                    test_case['category'] = '功能测试'
-                                
-                                validated_test_cases.append(test_case)
-                            else:
-                                logger.warning(f"测试用例验证失败，跳过: {test_case.get('id', 'unknown')}")
+                        # 确保类别字段存在且有意义
+                        if 'category' not in test_case or not test_case['category']:
+                            test_case['category'] = '功能测试'
                         
-                        # 如果验证后的测试用例为空，记录警告并返回空列表
-                        if not validated_test_cases:
-                            logger.warning("验证后的测试用例为空，需要重新生成")
-                            return []
-                        
-                        return validated_test_cases
-                except json.JSONDecodeError as e:
-                    logger.error(f"JSON代码块解析错误: {str(e)}")
-                    # 继续尝试其他解析方法
-            
-            # 方法2: 尝试直接解析整个消息内容为JSON
-            try:
-                # 直接尝试解析整个消息
-                json_data = json.loads(message)
-                if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                    logger.info(f"成功从完整消息中解析出 {len(json_data['test_cases'])} 个测试用例")
-                    
-                    # 验证和规范化测试用例
-                    validated_test_cases = []
-                    for test_case in json_data['test_cases']:
-                        # 确保所有必需字段都存在
-                        if self._validate_test_case(test_case):
-                            # 规范化优先级格式（确保是P0、P1等格式）
-                            if 'priority' in test_case and not test_case['priority'].startswith('P'):
-                                test_case['priority'] = f"P{test_case['priority']}" if test_case['priority'].isdigit() else test_case['priority']
-                            
-                            # 确保类别字段存在且有意义
-                            if 'category' not in test_case or not test_case['category']:
-                                test_case['category'] = '功能测试'
-                            
-                            validated_test_cases.append(test_case)
-                        else:
-                            logger.warning(f"测试用例验证失败，跳过: {test_case.get('id', 'unknown')}")
-                    
-                    # 如果验证后的测试用例为空，记录警告并返回空列表
-                    if not validated_test_cases:
-                        logger.warning("验证后的测试用例为空，需要重新生成")
-                        return []
-                    
-                    return validated_test_cases
-            except json.JSONDecodeError as e:
-                logger.error(f"完整消息JSON解析错误: {str(e)}")
-                # 继续尝试其他解析方法
+                        validated_test_cases.append(test_case)
+                    else:
+                        logger.warning(f"测试用例验证失败，跳过: {test_case.get('id', 'unknown')}")
+                
+                # 如果验证后的测试用例为空，记录警告并返回空列表
+                if not validated_test_cases:
+                    logger.warning("验证后的测试用例为空，需要重新生成")
+                    return []
+                
+                return validated_test_cases
             
             # 如果没有找到JSON格式的响应，尝试使用原来的解析方法
             sections = message.split('\n')
@@ -1310,128 +1271,16 @@ class TestCaseWriterAgent:
                 logger.error(f"响应不是字符串类型: {type(response)}")
                 return []
             
-            # 尝试提取JSON部分
-            json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(1)
-                try:
-                    # 尝试修复常见的JSON格式问题
-                    json_str = self._fix_json_format(json_str)
-                    
-                    # 验证JSON格式
-                    if self._is_valid_json_format(json_str):
-                        json_data = json.loads(json_str)
-                        if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                            return json_data['test_cases']
-                    else:
-                        logger.warning("提取的JSON格式无效，尝试修复")
-                        # 尝试更强的JSON修复
-                        json_str = self._fix_json_aggressive(json_str)
-                        if self._is_valid_json_format(json_str):
-                            json_data = json.loads(json_str)
-                            if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                                return json_data['test_cases']
-                        else:
-                            json_str = self._fix_incomplete_json(json_str)
-                            if json_str:
-                                try:
-                                    json_data = json.loads(json_str)
-                                    if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                                        return json_data['test_cases']
-                                except json.JSONDecodeError:
-                                    pass
-                except json.JSONDecodeError as e:
-                    logger.error(f"JSON解析错误: {str(e)}")
-                    # 尝试修复不完整的JSON
-                    fixed_json = self._fix_incomplete_json(json_str)
-                    if fixed_json:
-                        try:
-                            json_data = json.loads(fixed_json)
-                            if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                                return json_data['test_cases']
-                        except json.JSONDecodeError:
-                            pass
+            # 使用统一的JSON解析器
+            json_data = self.json_parser.parse(response, "test_case_improvement")
             
-            # 如果没有找到JSON代码块，尝试直接解析整个响应
-            try:
-                # 尝试修复常见的JSON格式问题
-                fixed_response = self._fix_json_format(response)
-                
-                # 验证JSON格式
-                if self._is_valid_json_format(fixed_response):
-                    json_data = json.loads(fixed_response)
-                    if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                        return json_data['test_cases']
-                    elif isinstance(json_data, list):
-                        # 如果直接返回了测试用例列表
-                        return json_data
-                    else:
-                        logger.warning("响应不是有效的JSON格式，尝试修复")
-            except json.JSONDecodeError:
-                pass
-            
-            # 尝试修复不完整的JSON
-            fixed_json = self._fix_incomplete_json(response)
-            if fixed_json:
-                try:
-                    json_data = json.loads(fixed_json)
-                    if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                        return json_data['test_cases']
-                    elif isinstance(json_data, list):
-                        return json_data
-                except json.JSONDecodeError:
-                    pass
-            
-            # 如果修复失败，尝试在整个文本中查找JSON对象
-            json_obj_match = re.search(r'\{[\s\S]*\}', response)
-            if json_obj_match:
-                json_str = json_obj_match.group(0)
-                try:
-                    # 尝试修复常见的JSON格式问题
-                    fixed_json_str = self._fix_json_format(json_str)
-                    
-                    if self._is_valid_json_format(fixed_json_str):
-                        json_data = json.loads(fixed_json_str)
-                        if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                            return json_data['test_cases']
-                        elif isinstance(json_data, list):
-                            return json_data
-                    else:
-                        # 尝试修复不完整的JSON
-                        fixed_json = self._fix_incomplete_json(json_str)
-                        if fixed_json:
-                            try:
-                                json_data = json.loads(fixed_json)
-                                if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                                    return json_data['test_cases']
-                                elif isinstance(json_data, list):
-                                    return json_data
-                            except json.JSONDecodeError:
-                                pass
-                except json.JSONDecodeError:
-                    # 尝试修复不完整的JSON
-                    fixed_json = self._fix_incomplete_json(json_str)
-                    if fixed_json:
-                        try:
-                            json_data = json.loads(fixed_json)
-                            if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                                return json_data['test_cases']
-                            elif isinstance(json_data, list):
-                                return json_data
-                        except json.JSONDecodeError:
-                            pass
-            
-            # 尝试提取测试用例数组部分
-            test_cases_match = re.search(r'"test_cases"\s*:\s*\[(.*?)\]', response, re.DOTALL)
-            if test_cases_match:
-                # 尝试修复和解析测试用例数组
-                test_cases_str = '[' + test_cases_match.group(1) + ']'
-                fixed_json = self._fix_incomplete_json(test_cases_str)
-                if fixed_json:
-                    try:
-                        return json.loads(fixed_json)
-                    except json.JSONDecodeError:
-                        pass
+            if json_data:
+                if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
+                    logger.info(f"成功从JSON响应中解析出 {len(json_data['test_cases'])} 个改进后的测试用例")
+                    return json_data['test_cases']
+                elif isinstance(json_data, list):
+                    logger.info(f"成功从JSON响应中解析出 {len(json_data)} 个改进后的测试用例")
+                    return json_data
             
             logger.warning("无法从响应中提取有效的测试用例")
             return []
@@ -1440,153 +1289,3 @@ class TestCaseWriterAgent:
             logger.error(f"解析大模型响应错误: {str(e)}")
             return []
     
-    def _fix_incomplete_json(self, json_str: str) -> str:
-        """尝试修复不完整的JSON字符串。"""
-        try:
-            # 检查是否是测试用例数组
-            if json_str.strip().startswith('[') and not json_str.strip().endswith(']'):
-                # 找到最后一个完整的测试用例对象
-                last_complete_obj_end = json_str.rfind('}')
-                if last_complete_obj_end > 0:
-                    # 截取到最后一个完整对象
-                    fixed_json = json_str[:last_complete_obj_end+1] + ']'
-                    return fixed_json
-            
-            # 检查是否是包含test_cases的对象
-            if '"test_cases"' in json_str and json_str.strip().startswith('{'):
-                if not json_str.strip().endswith('}'):
-                    # 找到test_cases数组的开始
-                    test_cases_start = json_str.find('"test_cases"')
-                    if test_cases_start > 0:
-                        # 找到数组开始
-                        array_start = json_str.find('[', test_cases_start)
-                        if array_start > 0:
-                            # 找到最后一个完整的测试用例对象
-                            last_complete_obj_end = json_str.rfind('}')
-                            if last_complete_obj_end > array_start:
-                                # 构建修复后的JSON
-                                fixed_json = json_str[:array_start+1]  # 包含 "test_cases": [
-                                fixed_json += json_str[array_start+1:last_complete_obj_end+1]  # 添加数组内容到最后一个完整对象
-                                fixed_json += ']}' # 关闭数组和对象
-                                return fixed_json
-            
-            # 如果是单个测试用例对象被截断
-            if json_str.strip().startswith('{') and not json_str.strip().endswith('}'):
-                # 尝试找到最后一个完整的键值对
-                last_complete_pair = max(
-                    json_str.rfind('",'),
-                    json_str.rfind('"],'),
-                    json_str.rfind('"},')
-                )
-                if last_complete_pair > 0:
-                    # 截取到最后一个完整键值对
-                    fixed_json = json_str[:last_complete_pair+2] + '}'
-                    return fixed_json
-            
-            return ""
-        except Exception as e:
-            logger.error(f"修复不完整JSON错误: {str(e)}")
-            return ""
-    
-    def _fix_json_format(self, json_str: str) -> str:
-        """修复常见的JSON格式问题"""
-        try:
-            # 修复常见的引号问题
-            json_str = re.sub(r'([^\\])"([^"]*?)([^\\])"', r'\1"\2\3"', json_str)
-            
-            # 修复可能的换行符问题
-            json_str = json_str.replace('\n', '\\n').replace('\r', '\\r')
-            
-            # 修复可能的制表符问题
-            json_str = json_str.replace('\t', '\\t')
-            
-            # 修复可能的反斜杠问题
-            json_str = json_str.replace('\\\\', '\\')
-            
-            # 尝试修复不完整的JSON
-            if json_str.strip().startswith('{') and not json_str.strip().endswith('}'):
-                # 找到最后一个完整的键值对
-                last_complete_pair = max(
-                    json_str.rfind('",'),
-                    json_str.rfind('"],'),
-                    json_str.rfind('"},')
-                )
-                if last_complete_pair > 0:
-                    json_str = json_str[:last_complete_pair+2] + '}'
-            
-            # 尝试修复不完整的数组
-            if json_str.strip().startswith('[') and not json_str.strip().endswith(']'):
-                # 找到最后一个完整的对象
-                last_complete_obj_end = json_str.rfind('}')
-                if last_complete_obj_end > 0:
-                    json_str = json_str[:last_complete_obj_end+1] + ']'
-            
-            return json_str
-        except Exception as e:
-            logger.warning(f"JSON格式修复失败: {str(e)}")
-            return json_str
-    
-    def _fix_json_aggressive(self, json_str: str) -> str:
-        """更强的JSON修复方法，处理更严重的格式问题"""
-        try:
-            # 修复缺少逗号的问题
-            # 在数组元素之间添加逗号
-            json_str = re.sub(r'(\])\s*(\[)', r'\1,\2', json_str)
-            
-            # 在对象属性之间添加逗号
-            json_str = re.sub(r'(")\s*(")', r'\1,\2', json_str)
-            
-            # 修复缺少引号的属性名
-            json_str = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
-            
-            # 修复缺少引号的字符串值
-            json_str = re.sub(r':\s*([a-zA-Z][a-zA-Z0-9\s]*?)([,}])', r': "\1"\2', json_str)
-            
-            # 修复数组中的字符串值
-            json_str = re.sub(r'\[\s*([a-zA-Z][a-zA-Z0-9\s]*?)\s*([,\]])', r'["\1"\2', json_str)
-            
-            # 修复对象结尾缺少大括号
-            if json_str.strip().startswith('{') and not json_str.strip().endswith('}'):
-                # 尝试找到最后一个有效的属性
-                last_valid_pos = max(
-                    json_str.rfind('",'),
-                    json_str.rfind('"],'),
-                    json_str.rfind('"},'),
-                    json_str.rfind('"')
-                )
-                if last_valid_pos > 0:
-                    if json_str[last_valid_pos] == ',':
-                        json_str = json_str[:last_valid_pos] + '}'
-                    elif json_str[last_valid_pos] == '"':
-                        json_str = json_str[:last_valid_pos+1] + '}'
-                    else:
-                        json_str = json_str[:last_valid_pos+2] + '}'
-            
-            # 修复数组结尾缺少方括号
-            if json_str.strip().startswith('[') and not json_str.strip().endswith(']'):
-                last_valid_pos = max(
-                    json_str.rfind('",'),
-                    json_str.rfind('},'),
-                    json_str.rfind('"'),
-                    json_str.rfind('}')
-                )
-                if last_valid_pos > 0:
-                    if json_str[last_valid_pos] == ',':
-                        json_str = json_str[:last_valid_pos] + ']'
-                    elif json_str[last_valid_pos] in ['"', '}']:
-                        json_str = json_str[:last_valid_pos+1] + ']'
-                    else:
-                        json_str = json_str[:last_valid_pos+2] + ']'
-            
-            return json_str
-        except Exception as e:
-            logger.warning(f"强JSON修复失败: {str(e)}")
-            return json_str
-
-    def _is_valid_json_format(self, json_str: str) -> bool:
-        """验证JSON格式是否有效"""
-        try:
-            json.loads(json_str)
-            return True
-        except json.JSONDecodeError:
-            return False
