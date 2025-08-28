@@ -2,6 +2,7 @@
 import logging
 import os
 import re
+import json
 import time
 from typing import Dict, List
 
@@ -93,7 +94,6 @@ class RequirementAnalystAgent:
             # 检查输入文档是否为空
             if not doc_content or not doc_content.strip():
                 logger.warning("输入文档为空，返回默认分析结果")
-                from src.schemas.communication import TestScenario
                 default_result = {
                     "functional_requirements": ["需要提供具体的功能需求"],
                     "non_functional_requirements": ["需要提供具体的非功能需求"],
@@ -159,8 +159,6 @@ class RequirementAnalystAgent:
                 
                 # 导入TestScenario类
                 from src.schemas.communication import TestScenario
-                import json
-                import re
                 
                 # 尝试从响应中提取JSON部分
                 json_match = re.search(r'```(?:json)?\s*({\s*".*?})\s*```', response_str, re.DOTALL)
@@ -565,7 +563,6 @@ class RequirementAnalystAgent:
 
     def _get_default_result(self):
         """返回默认的分析结果。"""
-        from src.schemas.communication import TestScenario
         default_result = {
             "functional_requirements": ["需要提供具体的功能需求"],
             "non_functional_requirements": ["需要提供具体的非功能需求"],

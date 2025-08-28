@@ -452,49 +452,50 @@ class AssistantAgent:
                         except json.JSONDecodeError:
                             logger.info("强修复后JSON解析仍然失败，尝试更宽松的JSON提取")
                             # 尝试更宽松的JSON提取
-                            extracted_json = self._extract_json_fallback(result)
-                            if extracted_json:
-                                result = extracted_json
-                            else:
-                                logger.error("无法解析测试设计结果，使用默认值")
-                                result = {
-                                    "test_approach": {
-                                        "methodology": [],
-                                        "tools": [],
-                                        "frameworks": []
-                                    },
-                                    "coverage_matrix": [],
-                                    "priorities": [],
-                                    "resource_estimation": {
-                                        "time": None,
-                                        "personnel": None,
-                                        "tools": [],
-                                        "additional_resources": []
+                            try:
+                                extracted_json = self._extract_json_fallback(result)
+                                if extracted_json:
+                                    result = extracted_json
+                                else:
+                                    logger.error("无法解析测试设计结果，使用默认值")
+                                    result = {
+                                        "test_approach": {
+                                            "methodology": [],
+                                            "tools": [],
+                                            "frameworks": []
+                                        },
+                                        "coverage_matrix": [],
+                                        "priorities": [],
+                                        "resource_estimation": {
+                                            "time": None,
+                                            "personnel": None,
+                                            "tools": [],
+                                            "additional_resources": []
+                                        }
                                     }
-                                }
-                    except Exception as e:
-                        logger.error(f"JSON处理过程中出错: {str(e)}")
-                        # 尝试更宽松的JSON提取
-                        extracted_json = self._extract_json_fallback(result)
-                        if extracted_json:
-                            result = extracted_json
-                        else:
-                            logger.error("无法解析测试设计结果，使用默认值")
-                            result = {
-                                "test_approach": {
-                                    "methodology": [],
-                                    "tools": [],
-                                    "frameworks": []
-                                },
-                                "coverage_matrix": [],
-                                "priorities": [],
-                                "resource_estimation": {
-                                    "time": None,
-                                    "personnel": None,
-                                    "tools": [],
-                                    "additional_resources": []
-                                }
-                            }
+                            except Exception as e:
+                                logger.error(f"JSON处理过程中出错: {str(e)}")
+                                # 尝试更宽松的JSON提取
+                                extracted_json = self._extract_json_fallback(result)
+                                if extracted_json:
+                                    result = extracted_json
+                                else:
+                                    logger.error("无法解析测试设计结果，使用默认值")
+                                    result = {
+                                        "test_approach": {
+                                            "methodology": [],
+                                            "tools": [],
+                                            "frameworks": []
+                                        },
+                                        "coverage_matrix": [],
+                                        "priorities": [],
+                                        "resource_estimation": {
+                                            "time": None,
+                                            "personnel": None,
+                                            "tools": [],
+                                            "additional_resources": []
+                                        }
+                                    }
 
                 # 验证响应消息格式
                 response = TestDesignResponse(**result)
@@ -862,4 +863,4 @@ class AssistantAgent:
                 "tools": [],
                 "additional_resources": []
             })
-        }
+            }

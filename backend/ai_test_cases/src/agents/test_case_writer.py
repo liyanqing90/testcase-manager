@@ -1,6 +1,7 @@
 # src/agents/test_case_writer.py
 import os
 import json
+import re
 import autogen
 from typing import Dict, List, Union
 import logging
@@ -1131,7 +1132,7 @@ class TestCaseWriterAgent:
         import concurrent.futures
         
         # 定义批处理函数
-        def process_batch(batch_index, batch_cases):
+        def process_improvement_batch(batch_index, batch_cases):
             logger.info(f"开始处理第{batch_index+1}批测试用例，共{len(batch_cases)}个")
             
             # 使用大模型改进当前批次的测试用例
@@ -1165,7 +1166,7 @@ class TestCaseWriterAgent:
         batch_results: List[List[Dict] | None] = [None] * len(batches)  # 预先分配结果列表
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.concurrent_workers) as executor:
             # 提交所有批次任务
-            future_to_batch = {executor.submit(process_batch, i, batch): i for i, batch in enumerate(batches)}
+            future_to_batch = {executor.submit(process_improvement_batch, i, batch): i for i, batch in enumerate(batches)}
             
             # 收集结果但不立即合并
             for future in concurrent.futures.as_completed(future_to_batch):
@@ -1310,11 +1311,7 @@ class TestCaseWriterAgent:
                 return []
             
             # 尝试提取JSON部分
-            import json
-            import re
-            
-            # 尝试提取JSON部分
-            json_match = re.search(r'``json\s*(.*?)\s*```', response, re.DOTALL)
+            json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
             if json_match:
                 json_str = json_match.group(1)
                 try:
@@ -1337,9 +1334,12 @@ class TestCaseWriterAgent:
                         else:
                             json_str = self._fix_incomplete_json(json_str)
                             if json_str:
-                                json_data = json.loads(json_str)
-                                if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                                    return json_data['test_cases']
+                                try:
+                                    json_data = json.loads(json_str)
+                                    if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
+                                        return json_data['test_cases']
+                                except json.JSONDecodeError:
+                                    pass
                 except json.JSONDecodeError as e:
                     logger.error(f"JSON解析错误: {str(e)}")
                     # 尝试修复不完整的JSON
@@ -1365,8 +1365,8 @@ class TestCaseWriterAgent:
                     elif isinstance(json_data, list):
                         # 如果直接返回了测试用例列表
                         return json_data
-                else:
-                    logger.warning("响应不是有效的JSON格式，尝试修复")
+                    else:
+                        logger.warning("响应不是有效的JSON格式，尝试修复")
             except json.JSONDecodeError:
                 pass
             
@@ -1381,34 +1381,22 @@ class TestCaseWriterAgent:
                         return json_data
                 except json.JSONDecodeError:
                     pass
-                
-                # 如果修复失败，尝试在整个文本中查找JSON对象
-                json_obj_match = re.search(r'\{[\s\S]*\}', response)
-                if json_obj_match:
-                    json_str = json_obj_match.group(0)
-                    try:
-                        # 尝试修复常见的JSON格式问题
-                        fixed_json_str = self._fix_json_format(json_str)
-                        
-                        if self._is_valid_json_format(fixed_json_str):
-                            json_data = json.loads(fixed_json_str)
-                            if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                                return json_data['test_cases']
-                            elif isinstance(json_data, list):
-                                return json_data
-                        else:
-                            # 尝试修复不完整的JSON
-                            fixed_json = self._fix_incomplete_json(json_str)
-                            if fixed_json:
-                                try:
-                                    json_data = json.loads(fixed_json)
-                                    if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
-                                        return json_data['test_cases']
-                                    elif isinstance(json_data, list):
-                                        return json_data
-                                except json.JSONDecodeError:
-                                    pass
-                    except json.JSONDecodeError:
+            
+            # 如果修复失败，尝试在整个文本中查找JSON对象
+            json_obj_match = re.search(r'\{[\s\S]*\}', response)
+            if json_obj_match:
+                json_str = json_obj_match.group(0)
+                try:
+                    # 尝试修复常见的JSON格式问题
+                    fixed_json_str = self._fix_json_format(json_str)
+                    
+                    if self._is_valid_json_format(fixed_json_str):
+                        json_data = json.loads(fixed_json_str)
+                        if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
+                            return json_data['test_cases']
+                        elif isinstance(json_data, list):
+                            return json_data
+                    else:
                         # 尝试修复不完整的JSON
                         fixed_json = self._fix_incomplete_json(json_str)
                         if fixed_json:
@@ -1420,6 +1408,18 @@ class TestCaseWriterAgent:
                                     return json_data
                             except json.JSONDecodeError:
                                 pass
+                except json.JSONDecodeError:
+                    # 尝试修复不完整的JSON
+                    fixed_json = self._fix_incomplete_json(json_str)
+                    if fixed_json:
+                        try:
+                            json_data = json.loads(fixed_json)
+                            if 'test_cases' in json_data and isinstance(json_data['test_cases'], list):
+                                return json_data['test_cases']
+                            elif isinstance(json_data, list):
+                                return json_data
+                        except json.JSONDecodeError:
+                            pass
             
             # 尝试提取测试用例数组部分
             test_cases_match = re.search(r'"test_cases"\s*:\s*\[(.*?)\]', response, re.DOTALL)

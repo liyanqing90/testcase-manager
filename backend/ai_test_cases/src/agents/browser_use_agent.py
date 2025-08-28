@@ -134,8 +134,8 @@ if __name__ == "__main__":
         if result == True:
             print("✅ 测试通过")
         elif result == False:
-            print(f"❌ 测试失败: {message}")
+            print(f"❌ 测试失败: {final_result}")
         else:  # result == 'warning'
-            print(f"⚠️ 警告: {message}")
+            print(f"⚠️ 警告: {final_result}")
         
         print("-" * 50)  # 分隔线

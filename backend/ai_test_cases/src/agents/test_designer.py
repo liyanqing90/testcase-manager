@@ -2,6 +2,8 @@
 import os
 import ast
 import autogen
+import json
+import re
 from typing import Dict, List
 import logging
 from dotenv import load_dotenv
@@ -211,8 +213,6 @@ class TestDesignerAgent:
                 }
 
             # 尝试解析JSON响应
-            import json
-            import re
             
             # 打印原始响应以便调试
             logger.info(f"AI响应内容: {response_str[:200]}...")  # 只打印前200个字符避免日志过长

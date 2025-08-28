@@ -1,5 +1,8 @@
 # src/agents/quality_assurance.py
 import os
+import json
+import re
+import concurrent.futures
 import autogen
 from typing import Dict, List
 import logging
@@ -259,8 +262,6 @@ class QualityAssuranceAgent:
             logger.warning("反馈内容为空或格式不正确，返回默认审查意见")
             return review_comments
             
-        import re
-        
         try:
             # 查找JSON内容
             json_match = re.search(r'\{[\s\S]*\}', feedback)
@@ -509,7 +510,6 @@ class QualityAssuranceAgent:
         
         # 使用线程池并发处理测试用例
         all_reviewed_cases = []
-        import concurrent.futures
         
         # 定义批处理函数
         def process_batch(batch_index, batch_cases):
