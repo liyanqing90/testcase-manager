@@ -5,6 +5,10 @@ from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 import uuid
 from datetime import datetime
+import logging
+
+# 配置日志
+logger = logging.getLogger(__name__)
 
 upload_bp = Blueprint('upload', __name__)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
@@ -133,6 +137,12 @@ def import_case():
     for c in cases:
         # 支持新ID映射
         case_id = c.get('new_ID') or c.get('ID')
+        
+        # 验证case_id长度，如果超过200字符则截断
+        if case_id and len(str(case_id)) > 200:
+            original_case_id = case_id
+            case_id = str(case_id)[:200]  # 截断到200字符
+            logger.warning(f"用例ID过长，已截断: {original_case_id[:50]}... -> {case_id}")
         
         # 处理日期时间字段
         created_at = c.get('Created At')

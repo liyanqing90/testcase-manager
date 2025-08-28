@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS projects (
 -- 创建 test_cases 表
 CREATE TABLE IF NOT EXISTS test_cases (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    case_id VARCHAR(64) NOT NULL,
+    case_id VARCHAR(200) NOT NULL,
     title VARCHAR(255),
     description TEXT,
     preconditions TEXT,

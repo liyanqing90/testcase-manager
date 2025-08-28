@@ -436,7 +436,65 @@ class AssistantAgent:
         
                     # 二次清理首尾空白
                     cleaned = cleaned.strip()
-                    result = json.loads(cleaned)
+                    
+                    try:
+                        # 尝试修复常见的JSON格式问题
+                        cleaned = self._fix_json_format(cleaned)
+                        result = json.loads(cleaned)
+                    except json.JSONDecodeError as e:
+                        logger.error(f"JSON解析错误: {str(e)}")
+                        # 尝试更强的JSON修复
+                        logger.info("尝试强JSON修复")
+                        cleaned = self._fix_json_aggressive(cleaned)
+                        try:
+                            result = json.loads(cleaned)
+                            logger.info("强修复后JSON解析成功")
+                        except json.JSONDecodeError:
+                            logger.info("强修复后JSON解析仍然失败，尝试更宽松的JSON提取")
+                            # 尝试更宽松的JSON提取
+                            extracted_json = self._extract_json_fallback(result)
+                            if extracted_json:
+                                result = extracted_json
+                            else:
+                                logger.error("无法解析测试设计结果，使用默认值")
+                                result = {
+                                    "test_approach": {
+                                        "methodology": [],
+                                        "tools": [],
+                                        "frameworks": []
+                                    },
+                                    "coverage_matrix": [],
+                                    "priorities": [],
+                                    "resource_estimation": {
+                                        "time": None,
+                                        "personnel": None,
+                                        "tools": [],
+                                        "additional_resources": []
+                                    }
+                                }
+                    except Exception as e:
+                        logger.error(f"JSON处理过程中出错: {str(e)}")
+                        # 尝试更宽松的JSON提取
+                        extracted_json = self._extract_json_fallback(result)
+                        if extracted_json:
+                            result = extracted_json
+                        else:
+                            logger.error("无法解析测试设计结果，使用默认值")
+                            result = {
+                                "test_approach": {
+                                    "methodology": [],
+                                    "tools": [],
+                                    "frameworks": []
+                                },
+                                "coverage_matrix": [],
+                                "priorities": [],
+                                "resource_estimation": {
+                                    "time": None,
+                                    "personnel": None,
+                                    "tools": [],
+                                    "additional_resources": []
+                                }
+                            }
 
                 # 验证响应消息格式
                 response = TestDesignResponse(**result)
@@ -644,3 +702,164 @@ class AssistantAgent:
                     '质量保证': {'status': 'error', 'completion': 0}
                 }
             }
+    
+    def _fix_json_format(self, json_str: str) -> str:
+        """修复常见的JSON格式问题"""
+        try:
+            # 修复常见的引号问题
+            json_str = re.sub(r'([^\\])"([^"]*?)([^\\])"', r'\1"\2\3"', json_str)
+            
+            # 修复可能的换行符问题
+            json_str = json_str.replace('\n', '\\n').replace('\r', '\\r')
+            
+            # 修复可能的制表符问题
+            json_str = json_str.replace('\t', '\\t')
+            
+            # 尝试修复不完整的JSON
+            if json_str.strip().startswith('{') and not json_str.strip().endswith('}'):
+                # 找到最后一个完整的键值对
+                last_complete_pair = max(
+                    json_str.rfind('",'),
+                    json_str.rfind('"],'),
+                    json_str.rfind('"},')
+                )
+                if last_complete_pair > 0:
+                    json_str = json_str[:last_complete_pair+2] + '}'
+            
+            return json_str
+        except Exception as e:
+            logger.warning(f"JSON格式修复失败: {str(e)}")
+            return json_str
+    
+    def _fix_json_aggressive(self, json_str: str) -> str:
+        """更强的JSON修复方法，处理更严重的格式问题"""
+        try:
+            # 修复缺少逗号的问题
+            # 在数组元素之间添加逗号
+            json_str = re.sub(r'(\])\s*(\[)', r'\1,\2', json_str)
+            
+            # 在对象属性之间添加逗号
+            json_str = re.sub(r'(")\s*(")', r'\1,\2', json_str)
+            
+            # 修复缺少引号的属性名
+            json_str = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
+            
+            # 修复缺少引号的字符串值
+            json_str = re.sub(r':\s*([a-zA-Z][a-zA-Z0-9\s]*?)([,}])', r': "\1"\2', json_str)
+            
+            # 修复数组中的字符串值
+            json_str = re.sub(r'\[\s*([a-zA-Z][a-zA-Z0-9\s]*?)\s*([,\]])', r'["\1"\2', json_str)
+            
+            # 修复对象结尾缺少大括号
+            if json_str.strip().startswith('{') and not json_str.strip().endswith('}'):
+                # 尝试找到最后一个有效的属性
+                last_valid_pos = max(
+                    json_str.rfind('",'),
+                    json_str.rfind('"],'),
+                    json_str.rfind('"},'),
+                    json_str.rfind('"')
+                )
+                if last_valid_pos > 0:
+                    if json_str[last_valid_pos] == ',':
+                        json_str = json_str[:last_valid_pos] + '}'
+                    elif json_str[last_valid_pos] == '"':
+                        json_str = json_str[:last_valid_pos+1] + '}'
+                    else:
+                        json_str = json_str[:last_valid_pos+2] + '}'
+            
+            # 修复数组结尾缺少方括号
+            if json_str.strip().startswith('[') and not json_str.strip().endswith(']'):
+                last_valid_pos = max(
+                    json_str.rfind('",'),
+                    json_str.rfind('},'),
+                    json_str.rfind('"'),
+                    json_str.rfind('}')
+                )
+                if last_valid_pos > 0:
+                    if json_str[last_valid_pos] == ',':
+                        json_str = json_str[:last_valid_pos] + ']'
+                    elif json_str[last_valid_pos] in ['"', '}']:
+                        json_str = json_str[:last_valid_pos+1] + ']'
+                    else:
+                        json_str = json_str[:last_valid_pos+2] + ']'
+            
+            return json_str
+        except Exception as e:
+            logger.warning(f"强JSON修复失败: {str(e)}")
+            return json_str
+    
+    def _extract_json_fallback(self, response_str: str) -> Dict:
+        """备用JSON提取方法，使用更宽松的匹配"""
+        try:
+            # 尝试查找包含关键字段的JSON对象
+            patterns = [
+                r'\{[^{}]*"test_approach"[^{}]*\}',
+                r'\{[^{}]*"coverage_matrix"[^{}]*\}',
+                r'\{[^{}]*"priorities"[^{}]*\}'
+            ]
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, response_str, re.DOTALL)
+                if matches:
+                    # 尝试扩展匹配到完整的JSON对象
+                    for match in matches:
+                        # 向前和向后扩展查找完整的JSON
+                        start_pos = response_str.find(match)
+                        if start_pos >= 0:
+                            # 向前查找开始的大括号
+                            brace_count = 0
+                            start_brace = start_pos
+                            for i in range(start_pos, -1, -1):
+                                if response_str[i] == '{':
+                                    brace_count += 1
+                                elif response_str[i] == '}':
+                                    brace_count -= 1
+                                if brace_count == 1:
+                                    start_brace = i
+                                    break
+                            
+                            # 向后查找结束的大括号
+                            brace_count = 0
+                            end_brace = start_pos + len(match)
+                            for i in range(start_pos + len(match), len(response_str)):
+                                if response_str[i] == '{':
+                                    brace_count += 1
+                                elif response_str[i] == '}':
+                                    brace_count -= 1
+                                if brace_count == 0:
+                                    end_brace = i + 1
+                                    break
+                            
+                            # 提取完整的JSON
+                            full_json = response_str[start_brace:end_brace]
+                            try:
+                                # 尝试修复和解析
+                                fixed_json = self._fix_json_format(full_json)
+                                parsed_result = json.loads(fixed_json)
+                                if isinstance(parsed_result, dict):
+                                    return self._build_structured_result(parsed_result)
+                            except Exception:
+                                continue
+            
+            return None
+        except Exception as e:
+            logger.warning(f"备用JSON提取失败: {str(e)}")
+            return None
+    
+    def _build_structured_result(self, parsed_result: Dict) -> Dict:
+        """构建结构化的测试策略结果"""
+        return {
+            "test_approach": {
+                "methodology": parsed_result.get("methodology", []),
+                "tools": parsed_result.get("tools", []),
+                "frameworks": parsed_result.get("frameworks", [])
+            },
+            "coverage_matrix": parsed_result.get("coverage_matrix", []),
+            "priorities": parsed_result.get("priorities", []),
+            "resource_estimation": parsed_result.get("resource_estimation", {
+                "time": None,
+                "personnel": None,
+                "tools": [],
+                "additional_resources": []
+            })
+        }

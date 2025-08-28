@@ -130,6 +130,17 @@ class QualityAssuranceAgent:
             # 提取反馈中的关键改进建议
             review_comments = self._extract_review_comments(review_feedback)
             
+            # 确保review_comments有有效值
+            if not review_comments:
+                logger.warning("无法提取审查反馈，使用默认值")
+                review_comments = {
+                    "completeness": ["建议完善测试用例的完整性"],
+                    "clarity": ["建议提高测试用例的清晰度"],
+                    "executability": ["建议增强测试用例的可执行性"],
+                    "boundary_cases": ["建议添加边界情况测试"],
+                    "error_scenarios": ["建议增加错误场景测试"]
+                }
+            
             # 使用并发方式处理测试用例
             if self.concurrent_workers > 1:
                 logger.info(f"使用并发方式处理测试用例，并发数: {self.concurrent_workers}")
@@ -234,7 +245,8 @@ class QualityAssuranceAgent:
             return {"error": str(e), "review_status": "error"}
 
     def _extract_review_comments(self, feedback: str) -> Dict:
-        """从字符串格式的反馈中提取结构化的审查评论。"""
+        """从反馈中提取审查意见。"""
+        # 初始化默认的审查意见结构
         review_comments = {
             "completeness": [],
             "clarity": [],
@@ -243,11 +255,10 @@ class QualityAssuranceAgent:
             "error_scenarios": []
         }
         
-        if not feedback:
+        if not feedback or not isinstance(feedback, str):
+            logger.warning("反馈内容为空或格式不正确，返回默认审查意见")
             return review_comments
             
-        # 尝试解析JSON格式的反馈
-        import json
         import re
         
         try:
@@ -255,14 +266,31 @@ class QualityAssuranceAgent:
             json_match = re.search(r'\{[\s\S]*\}', feedback)
             if json_match:
                 json_str = json_match.group(0)
+                # 尝试修复常见的JSON格式问题
+                json_str = self._fix_json_format(json_str)
+                
                 # 解析JSON
                 parsed_feedback = json.loads(json_str)
                 
                 # 提取review_comments部分
                 if 'review_comments' in parsed_feedback:
-                    return parsed_feedback['review_comments']
+                    extracted_comments = parsed_feedback['review_comments']
+                    if isinstance(extracted_comments, dict):
+                        # 合并提取的评论到默认结构中
+                        for key in review_comments:
+                            if key in extracted_comments and isinstance(extracted_comments[key], list):
+                                review_comments[key] = extracted_comments[key]
+                        return review_comments
         except Exception as e:
             logger.warning(f"JSON解析失败，将使用文本解析方式: {str(e)}")
+            # 尝试更宽松的JSON提取
+            extracted_comments = self._extract_json_fallback(feedback)
+            if extracted_comments and isinstance(extracted_comments, dict):
+                # 合并提取的评论到默认结构中
+                for key in review_comments:
+                    if key in extracted_comments and isinstance(extracted_comments[key], list):
+                        review_comments[key] = extracted_comments[key]
+                return review_comments
         
         # 如果JSON解析失败，回退到文本解析方式
         feedback_sections = [line.strip() for line in feedback.split('\n') if line.strip()]
@@ -290,12 +318,160 @@ class QualityAssuranceAgent:
                 if content:  # 确保内容不为空
                     review_comments[current_section].append(content)
         
+        # 确保每个部分至少有一个默认建议
+        for key in review_comments:
+            if not review_comments[key]:
+                review_comments[key] = [f"建议改进{key}相关的内容"]
+        
         return review_comments
 
     def _get_current_timestamp(self) -> str:
         """获取当前时间戳"""
         from datetime import datetime
-        return datetime.now().isoformat()
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    def _fix_json_format(self, json_str: str) -> str:
+        """修复常见的JSON格式问题"""
+        try:
+            # 修复常见的引号问题
+            json_str = re.sub(r'([^\\])"([^"]*?)([^\\])"', r'\1"\2\3"', json_str)
+            
+            # 修复可能的换行符问题
+            json_str = json_str.replace('\n', '\\n').replace('\r', '\\r')
+            
+            # 修复可能的制表符问题
+            json_str = json_str.replace('\t', '\\t')
+            
+            # 尝试修复不完整的JSON
+            if json_str.strip().startswith('{') and not json_str.strip().endswith('}'):
+                # 找到最后一个完整的键值对
+                last_complete_pair = max(
+                    json_str.rfind('",'),
+                    json_str.rfind('"],'),
+                    json_str.rfind('"},')
+                )
+                if last_complete_pair > 0:
+                    json_str = json_str[:last_complete_pair+2] + '}'
+            
+            return json_str
+        except Exception as e:
+            logger.warning(f"JSON格式修复失败: {str(e)}")
+            return json_str
+    
+    def _fix_json_aggressive(self, json_str: str) -> str:
+        """更强的JSON修复方法，处理更严重的格式问题"""
+        try:
+            # 修复缺少逗号的问题
+            # 在数组元素之间添加逗号
+            json_str = re.sub(r'(\])\s*(\[)', r'\1,\2', json_str)
+            
+            # 在对象属性之间添加逗号
+            json_str = re.sub(r'(")\s*(")', r'\1,\2', json_str)
+            
+            # 修复缺少引号的属性名
+            json_str = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
+            
+            # 修复缺少引号的字符串值
+            json_str = re.sub(r':\s*([a-zA-Z][a-zA-Z0-9\s]*?)([,}])', r': "\1"\2', json_str)
+            
+            # 修复数组中的字符串值
+            json_str = re.sub(r'\[\s*([a-zA-Z][a-zA-Z0-9\s]*?)\s*([,\]])', r'["\1"\2', json_str)
+            
+            # 修复对象结尾缺少大括号
+            if json_str.strip().startswith('{') and not json_str.strip().endswith('}'):
+                # 尝试找到最后一个有效的属性
+                last_valid_pos = max(
+                    json_str.rfind('",'),
+                    json_str.rfind('"],'),
+                    json_str.rfind('"},'),
+                    json_str.rfind('"')
+                )
+                if last_valid_pos > 0:
+                    if json_str[last_valid_pos] == ',':
+                        json_str = json_str[:last_valid_pos] + '}'
+                    elif json_str[last_valid_pos] == '"':
+                        json_str = json_str[:last_valid_pos+1] + '}'
+                    else:
+                        json_str = json_str[:last_valid_pos+2] + '}'
+            
+            # 修复数组结尾缺少方括号
+            if json_str.strip().startswith('[') and not json_str.strip().endswith(']'):
+                last_valid_pos = max(
+                    json_str.rfind('",'),
+                    json_str.rfind('},'),
+                    json_str.rfind('"'),
+                    json_str.rfind('}')
+                )
+                if last_valid_pos > 0:
+                    if json_str[last_valid_pos] == ',':
+                        json_str = json_str[:last_valid_pos] + ']'
+                    elif json_str[last_valid_pos] in ['"', '}']:
+                        json_str = json_str[:last_valid_pos+1] + ']'
+                    else:
+                        json_str = json_str[:last_valid_pos+2] + ']'
+            
+            return json_str
+        except Exception as e:
+            logger.warning(f"强JSON修复失败: {str(e)}")
+            return json_str
+    
+    def _extract_json_fallback(self, feedback: str) -> Dict:
+        """备用JSON提取方法，使用更宽松的匹配"""
+        try:
+            # 尝试查找包含关键字段的JSON对象
+            patterns = [
+                r'\{[^{}]*"review_comments"[^{}]*\}',
+                r'\{[^{}]*"completeness"[^{}]*\}',
+                r'\{[^{}]*"clarity"[^{}]*\}'
+            ]
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, feedback, re.DOTALL)
+                if matches:
+                    # 尝试扩展匹配到完整的JSON对象
+                    for match in matches:
+                        # 向前和向后扩展查找完整的JSON
+                        start_pos = feedback.find(match)
+                        if start_pos >= 0:
+                            # 向前查找开始的大括号
+                            brace_count = 0
+                            start_brace = start_pos
+                            for i in range(start_pos, -1, -1):
+                                if feedback[i] == '{':
+                                    brace_count += 1
+                                elif feedback[i] == '}':
+                                    brace_count -= 1
+                                if brace_count == 1:
+                                    start_brace = i
+                                    break
+                            
+                            # 向后查找结束的大括号
+                            brace_count = 0
+                            end_brace = start_pos + len(match)
+                            for i in range(start_pos + len(match), len(feedback)):
+                                if feedback[i] == '{':
+                                    brace_count += 1
+                                elif feedback[i] == '}':
+                                    brace_count -= 1
+                                if brace_count == 0:
+                                    end_brace = i + 1
+                                    break
+                            
+                            # 提取完整的JSON
+                            full_json = feedback[start_brace:end_brace]
+                            try:
+                                # 尝试修复和解析
+                                fixed_json = self._fix_json_format(full_json)
+                                parsed_feedback = json.loads(fixed_json)
+                                if 'review_comments' in parsed_feedback:
+                                    return parsed_feedback['review_comments']
+                            except Exception:
+                                continue
+            
+            return None
+        except Exception as e:
+            logger.warning(f"备用JSON提取失败: {str(e)}")
+            return None
 
     def _validate_result(self, result: Dict) -> bool:
         """验证审查结果的完整性和有效性"""
