@@ -28,6 +28,7 @@ class AssistantAgent:
                 "model": qwen_model,        # 通义千问模型
                 "api_key": qwen_api_key,    # 通义千问API Key
                 "base_url": qwen_base_url,  # 通义千问URL
+                "price": [0.0, 0.0]        # 添加price字段消除警告：[prompt_price_per_1k, completion_token_price_per_1k]
             }
         ]
         
