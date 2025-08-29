@@ -142,7 +142,7 @@ CREATE TABLE projects (
 ```sql
 CREATE TABLE test_cases (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    case_id VARCHAR(64) NOT NULL,
+    case_id VARCHAR(200) NOT NULL,
     title VARCHAR(255),
     description TEXT,
     preconditions TEXT,
@@ -468,6 +468,13 @@ QWEN_MODEL=qwen-turbo
 
 ## Changelog
 
+### V1.0.4 (2025-08-29)
+- ✅ Added AI test case generation strategy group JSON recognition
+- ✅ Added test case requirement analysis feature point rule matching
+- ✅ Enhanced test case upload partial recognition logic
+- ✅ Added system settings, all model configurations will no longer be hardcoded in code, changed to configuration
+- ✅ Fixed AutoAgent framework warning when unable to calculate prices for certain models
+
 ### V1.0.3 (2025-08-22)
 - ✅  Manual test case addition functionality
 - ✅  Execution logs
@@ -500,7 +507,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Contact
 
 For issues or suggestions, please contact through the following channels:
-- Project Issues: [GitHub Issues](https://github.com/your-repo/issues)
+- Project Issues: [GitHub Issues](https://github.com/AarnWang/testcase-manager/issues)
 - Email: maz9366@163.com
 
 ---

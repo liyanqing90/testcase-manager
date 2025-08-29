@@ -140,7 +140,7 @@ CREATE TABLE projects (
 ```sql
 CREATE TABLE test_cases (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    case_id VARCHAR(64) NOT NULL,
+    case_id VARCHAR(200) NOT NULL,
     title VARCHAR(255),
     description TEXT,
     preconditions TEXT,
@@ -465,6 +465,12 @@ QWEN_MODEL=qwen-turbo
 5. 打开 Pull Request
 
 ## 更新日志
+### V1.0.4 (2025-08-29)
+- ✅ 增加AI生成用例策略组json识别
+- ✅ 增加用例需求分析功能点规则匹配度
+- ✅ 补充用例上传的部分识别逻辑
+- ✅ 增加系统设置，后续所有的模型配置将不在代码中写死，改为配置
+- ✅ 解决AutoAgent框架识别部分模型时，无法计算价格导致的warning
 
 ### V1.0.3 (2025-08-22)
 - ✅ 手动增加测试用例功能
@@ -498,7 +504,7 @@ QWEN_MODEL=qwen-turbo
 ## 联系方式
 
 如有问题或建议，请通过以下方式联系：
-- 项目Issues: [GitHub Issues](https://github.com/your-repo/issues)
+- 项目Issues: [GitHub Issues](https://github.com/AarnWang/testcase-manager/issues)
 - 邮箱: maz9366@163.com
 
 ---

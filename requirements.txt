@@ -40,3 +40,8 @@ flask-cors
 flask-mysqldb
 werkzeug
 
+# Additional dependencies found in code
+mysql-connector-python>=8.0.0  # 用于mysql.connector
+langchain-openai>=0.1.0  # 用于langchain_openai
+requests>=2.31.0  # 用于HTTP请求
+
