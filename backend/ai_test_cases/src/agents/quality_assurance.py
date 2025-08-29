@@ -65,7 +65,9 @@ class QualityAssuranceAgent:
             1. 必须严格按照上述JSON格式返回审查结果
             2. 每个类别至少包含一条具体的改进建议
             3. 所有建议必须清晰、具体、可执行
-            4. 不要返回任何JSON格式之外的文本内容""",
+            4. 不要返回任何JSON格式之外的文本内容
+            5. 返回的内容必须是中文回复，不要英文回复
+            6. review_comments等键名必须按照json里的格式返回，如"review_comments": {"completeness": ["完整性相关的改进建议1", "完整性相关的改进建议2"]}这种""",
             llm_config={"config_list": self.config_list}
         )
         

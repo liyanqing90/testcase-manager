@@ -4,6 +4,7 @@ import pandas as pd
 from pathlib import Path
 import logging
 import os
+import re
 from models.test_case import TestCase
 from models.template import Template
 
@@ -15,6 +16,42 @@ class ExportService:
     def __init__(self):
         self.supported_formats = ['.xlsx']
         self.max_file_size_mb = 50  # 最大文件大小限制(MB)
+    
+    def _clean_text_data(self, text: str) -> str:
+        """清理文本数据，移除emoji、null字节和其他特殊字符"""
+        if not isinstance(text, str):
+            return str(text) if text is not None else ""
+        
+        # 移除null字节
+        text = text.replace('\x00', '')
+        
+        # 移除emoji和其他特殊Unicode字符
+        # 保留基本的中文、英文、数字和常用标点符号
+        text = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9\s\.,!?;:()\[\]{}\-_+=<>/"\'\\|@#$%^&*~`，。！？；：（）【】｛｝—＋＝＜＞／""''＼｜＠＃＄％＾＆＊～｀\n\r\t]', '', text)
+        
+        # 移除多余的空白字符
+        text = re.sub(r'\s+', ' ', text)
+        
+        # 移除开头和结尾的空白
+        text = text.strip()
+        
+        return text
+    
+    def _clean_list_data(self, data_list: List) -> List:
+        """清理列表数据"""
+        if not isinstance(data_list, list):
+            return []
+        
+        cleaned_list = []
+        for item in data_list:
+            if isinstance(item, str):
+                cleaned_item = self._clean_text_data(item)
+                if cleaned_item:  # 只添加非空项
+                    cleaned_list.append(cleaned_item)
+            else:
+                cleaned_list.append(str(item))
+        
+        return cleaned_list
     
     async def export_to_excel(self,
                             test_cases: List,
@@ -86,40 +123,41 @@ class ExportService:
             if isinstance(test_case, dict):
                 # 如果是字典类型，直接使用字典的值
                 row = {
-                    'ID': test_case.get('id', ''),
-                    'Title': test_case.get('title', ''),
-                    'Description': test_case.get('description', ''),
-                    'Preconditions': '\n'.join(test_case.get('preconditions', [])),
-                    'Steps': '\n'.join(test_case.get('steps', [])),
-                    'Expected Results': '\n'.join(test_case.get('expected_results', [])),
-                    'Priority': test_case.get('priority', ''),
-                    'Category': test_case.get('category', ''),
-                    'Status': test_case.get('status', 'Draft'),
-                    'Created At': test_case.get('created_at', ''),
-                    'Updated At': test_case.get('updated_at', ''),
-                    'Created By': test_case.get('created_by', ''),
-                    'Last Updated By': test_case.get('last_updated_by', '')
+                    'ID': self._clean_text_data(test_case.get('id', '')),
+                    'Title': self._clean_text_data(test_case.get('title', '')),
+                    'Description': self._clean_text_data(test_case.get('description', '')),
+                    'Preconditions': '\n'.join(self._clean_list_data(test_case.get('preconditions', []))),
+                    'Steps': '\n'.join(self._clean_list_data(test_case.get('steps', []))),
+                    'Expected Results': '\n'.join(self._clean_list_data(test_case.get('expected_results', []))),
+                    'Priority': self._clean_text_data(test_case.get('priority', '')),
+                    'Category': self._clean_text_data(test_case.get('category', '')),
+                    'Status': self._clean_text_data(test_case.get('status', 'Draft')),
+                    'Created At': self._clean_text_data(test_case.get('created_at', '')),
+                    'Updated At': self._clean_text_data(test_case.get('updated_at', '')),
+                    'Created By': self._clean_text_data(test_case.get('created_by', '')),
+                    'Last Updated By': self._clean_text_data(test_case.get('last_updated_by', ''))
                 }
             else:
                 # 如果是TestCase对象，使用对象的属性
                 row = {
-                    'ID': getattr(test_case, 'id', ''),
-                    'Title': getattr(test_case, 'title', ''),
-                    'Description': getattr(test_case, 'description', ''),
-                    'Preconditions': '\n'.join(getattr(test_case, 'preconditions', [])),
-                    'Steps': '\n'.join(getattr(test_case, 'steps', [])),
-                    'Expected Results': '\n'.join(getattr(test_case, 'expected_results', [])),
-                    'Priority': getattr(test_case, 'priority', ''),
-                    'Category': getattr(test_case, 'category', ''),
-                    'Status': getattr(test_case, 'status', 'Draft'),
-                    'Created At': getattr(test_case, 'created_at', ''),
-                    'Updated At': getattr(test_case, 'updated_at', ''),
-                    'Created By': getattr(test_case, 'created_by', ''),
-                    'Last Updated By': getattr(test_case, 'last_updated_by', '')
+                    'ID': self._clean_text_data(getattr(test_case, 'id', '')),
+                    'Title': self._clean_text_data(getattr(test_case, 'title', '')),
+                    'Description': self._clean_text_data(getattr(test_case, 'description', '')),
+                    'Preconditions': '\n'.join(self._clean_list_data(getattr(test_case, 'preconditions', []))),
+                    'Steps': '\n'.join(self._clean_list_data(getattr(test_case, 'steps', []))),
+                    'Expected Results': '\n'.join(self._clean_list_data(getattr(test_case, 'expected_results', []))),
+                    'Priority': self._clean_text_data(getattr(test_case, 'priority', '')),
+                    'Category': self._clean_text_data(getattr(test_case, 'category', '')),
+                    'Status': self._clean_text_data(getattr(test_case, 'status', 'Draft')),
+                    'Created At': self._clean_text_data(getattr(test_case, 'created_at', '')),
+                    'Updated At': self._clean_text_data(getattr(test_case, 'updated_at', '')),
+                    'Created By': self._clean_text_data(getattr(test_case, 'created_by', '')),
+                    'Last Updated By': self._clean_text_data(getattr(test_case, 'last_updated_by', ''))
                 }
             # 添加自定义字段
             for field in template.custom_fields:
-                row[field] = getattr(test_case, field, '')
+                field_value = getattr(test_case, field, '')
+                row[field] = self._clean_text_data(field_value)
             data.append(row)
         
         return pd.DataFrame(data)
@@ -137,6 +175,9 @@ class ExportService:
         for rule in template.conditional_formatting:
             if rule['column'] in df.columns and 'condition' in rule:
                 try:
+                    # 确保列数据是字符串类型并已清理
+                    df[rule['column']] = df[rule['column']].astype(str).apply(self._clean_text_data)
+                    
                     mask = df[rule['column']].str.contains(rule['condition'], na=False)
                     
                     # 应用格式 - 根据format字段的值应用不同的格式

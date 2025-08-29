@@ -97,7 +97,9 @@ class TestDesignerAgent:
 1. 所有输出必须严格遵循上述 JSON 格式
 2. 每个数组至少包含一个有效项
 3. 所有文本必须使用双引号
-4. JSON 必须是有效的且可解析的''',
+4. JSON 必须是有效的且可解析的
+5. 返回的内容必须是中文回复，不要英文回复
+6. id等键名必须按照json里的格式返回，如"time": "预计时间"这种，具体按照上述JSON格式来决定，一定严格按照JSON格式返回''',
             llm_config={"config_list": self.config_list}
         )
         
