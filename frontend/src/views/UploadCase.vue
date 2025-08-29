@@ -18,7 +18,7 @@
             type="warning" 
             :disabled="!hasDuplicate" 
             @click="removeDuplicateCases"
-            :title="hasDuplicate ? '点击移除所有重复用例' : '当前没有重复用例'"
+            :title="hasDuplicate ? '点击处理文件内重复用例' : '当前没有文件内重复用例'"
             class="remove-duplicate-btn"
           >
             <el-icon v-if="hasDuplicate" class="delete-icon">
@@ -27,7 +27,7 @@
               </svg>
             </el-icon>
             <span class="btn-text">
-              去除重复用例
+              处理文件内重复
               <span v-if="hasDuplicate" class="duplicate-count">
                 ({{ duplicateCount }}条)
               </span>
@@ -130,7 +130,7 @@
             </transition>
           </template>
         </el-table-column>
-        <el-table-column v-if="hasDuplicate" label="新ID" width="120">
+        <el-table-column v-if="hasAnyDuplicate" label="新ID" width="120">
           <template #default="scope">
             <el-input 
               v-if="scope.row.duplicate || scope.row.new_ID" 
@@ -221,10 +221,16 @@ export default {
   },
   computed: {
     hasDuplicate() {
-      return this.cases.some(c => c.duplicate);
+      // 只检查文件内重复的情况，不包括新ID重复和数据库中重复
+      return this.cases.some(c => c.duplicate && c.duplicate_reason === '文件内重复');
     },
     duplicateCount() {
-      return this.cases.filter(c => c.duplicate).length;
+      // 只计算文件内重复的数量
+      return this.cases.filter(c => c.duplicate && c.duplicate_reason === '文件内重复').length;
+    },
+    hasAnyDuplicate() {
+      // 检查是否有任何类型的重复用例（用于控制新ID列的显示）
+      return this.cases.some(c => c.duplicate);
     }
   },
   async mounted() {
@@ -325,7 +331,12 @@ export default {
         const res = await uploadCase(option.file, this.selectedProject);
         if (res && res.data) {
           this.headers = res.data.headers || [];
-          this.cases = (res.data.cases || []).map(c => ({ ...c, new_ID: '' }));
+          this.cases = (res.data.cases || []).map(c => ({ 
+            ...c, 
+            new_ID: '',
+            original_duplicate: c.duplicate,           // 保存原始的重复状态
+            original_duplicate_reason: c.duplicate_reason || ''  // 保存原始的重复原因
+          }));
           // 按用例ID升序排序
           this.cases.sort((a, b) => {
             const idA = isNaN(Number(a.ID)) ? a.ID : Number(a.ID);
@@ -356,9 +367,22 @@ export default {
       if (row.new_ID && this.$refs.caseTable) {
         this.$refs.caseTable.toggleRowSelection(row, true);
       }
+      
+      // 当新ID被清空时，恢复到原始状态
+      if (!row.new_ID || row.new_ID.trim() === '') {
+        row.duplicate = row.original_duplicate;
+        row.duplicate_reason = row.original_duplicate_reason;
+      }
     },
     
     onNewIdBlur(row) {
+      // 如果新ID为空，恢复到原始状态
+      if (!row.new_ID || row.new_ID.trim() === '') {
+        row.duplicate = row.original_duplicate;
+        row.duplicate_reason = row.original_duplicate_reason;
+        return;
+      }
+      
       // 输入框失焦时检查新ID是否重复
       if (row.new_ID && this.selectedProject) {
         // 1. 先检查是否与其他正在编辑的新ID重复
@@ -432,7 +456,7 @@ export default {
         // 检查是否所有用例都是重复的
         const allDuplicates = this.cases.every(c => c.duplicate);
         if (allDuplicates) {
-          this.$message.warning('导入的数据已重复，请为重复用例设置新的ID或移除重复用例');
+          this.$message.warning('导入的数据已重复，请为重复用例设置新的ID');
         } else {
           this.$message.warning('请至少选择一条用例');
         }
@@ -565,10 +589,10 @@ export default {
      * 去除重复用例
      */
     removeDuplicateCases() {
-      // 收集所有重复用例，按ID分组
-      const duplicates = this.cases.filter(c => c.duplicate);
+      // 只收集文件内重复的用例，按ID分组
+      const duplicates = this.cases.filter(c => c.duplicate && c.duplicate_reason === '文件内重复');
       if (duplicates.length < 2) {
-        this.$message.warning('没有足够的重复用例进行对比');
+        this.$message.warning('没有足够的文件内重复用例进行对比');
         return;
       }
       
@@ -592,7 +616,7 @@ export default {
       }
       
       if (this.duplicateGroups.length === 0) {
-        this.$message.warning('没有足够的重复用例进行对比');
+        this.$message.warning('没有足够的文件内重复用例进行对比');
         return;
       }
       
@@ -837,6 +861,8 @@ export default {
       if (this.$refs.caseTable) {
         this.$refs.caseTable.clearSelection();
       }
+      
+      // 注意：不清除cases数据，保持原始状态
     },
 
 
