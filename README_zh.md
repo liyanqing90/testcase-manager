@@ -9,6 +9,8 @@
 ![img_2.png](img_2.png)
 ![img_3.png](img_3.png)
 
+### 推荐先使用 QWEN_MODEL = 'qwen-plus-latest' 模型，其他模型开发完了在适配
+
 ### 核心功能
 - 项目管理: 创建、编辑、删除项目，支持项目描述和维护人员管理
 - Excel批量上传: 支持 `.xlsx` 格式文件上传，智能解析Excel内容

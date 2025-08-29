@@ -4,6 +4,8 @@
 
 A modern test case management system built with Flask and Vue 3, supporting Excel file batch upload, project management, test case viewing, and AI-powered intelligent generation functionalities.
 
+### Recommended for use QWEN_MODEL = 'qwen-plus-latest'
+
 ## Project Features
 ### project img
 ![img.png](img.png)
