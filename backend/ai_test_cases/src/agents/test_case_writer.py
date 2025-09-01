@@ -55,6 +55,7 @@ class TestCaseWriterAgent:
                     {
                         "id": "TC001",
                         "title": "测试用例标题",
+                        "description": "测试用例的详细描述，说明测试的目的和范围",
                         "preconditions": [
                             "前置条件1",
                             "前置条件2"
@@ -78,9 +79,10 @@ class TestCaseWriterAgent:
             2. 每个数组至少包含一个有效项
             3. 所有文本必须使用双引号
             4. JSON 必须是有效的且可解析的
-            5. 每个测试用例必须包含所有必需字段
-            6. 返回的内容必须是中文回复，不要英文回复
-            7. id等键名必须按照json里的格式返回，如"id": "TC001-修改密码为空"这种''',
+            5. 每个测试用例必须包含所有必需字段，包括description描述
+            6. description字段应该详细描述测试用例的目的、范围和测试重点
+            7. 返回的内容必须是中文回复，不要英文回复
+            8. id等键名必须按照json里的格式返回，如"id": "TC001-修改密码为空"这种''',
             llm_config={"config_list": self.config_list}
         )
         
@@ -246,11 +248,12 @@ class TestCaseWriterAgent:
                 对每个测试用例，请提供：
                 1. 用例ID
                 2. 标题
-                3. 前置条件
-                4. 测试步骤
-                5. 预期结果
-                6. 优先级（使用上述优先级定义）
-                7. 类别（对应测试覆盖矩阵中的测试类型）
+                3. 描述（详细说明测试的目的和范围）
+                4. 前置条件
+                5. 测试步骤
+                6. 预期结果
+                7. 优先级（使用上述优先级定义）
+                8. 类别（对应测试覆盖矩阵中的测试类型）
                 
                 请直接提供测试用例，无需等待进一步确认。""",
                 max_turns=1  # 限制对话轮次为1，避免死循环
@@ -277,7 +280,7 @@ class TestCaseWriterAgent:
                 测试用例必须使用以下优先级：
                 {priority_info}
                 
-                每个测试用例必须包含：ID、标题、前置条件、测试步骤、预期结果、优先级和类别。
+                每个测试用例必须包含：ID、标题、描述、前置条件、测试步骤、预期结果、优先级和类别。
                 优先级必须使用P0、P1等格式，类别必须与测试覆盖矩阵中的测试类型对应。
                 
                 重要：
@@ -419,6 +422,7 @@ class TestCaseWriterAgent:
                     current_test_case = {
                         'id': '',
                         'title': '',
+                        'description': '',
                         'preconditions': [],
                         'steps': [],
                         'expected_results': [],
@@ -435,6 +439,7 @@ class TestCaseWriterAgent:
                         current_test_case = {
                             'id': f'TC{len(test_cases)+1:03d}',  # 自动生成ID
                             'title': '',
+                            'description': '',
                             'preconditions': [],
                             'steps': [],
                             'expected_results': [],
@@ -445,12 +450,28 @@ class TestCaseWriterAgent:
                     title_parts = line.split(':', 1) if line else ['', '']
                     current_test_case['title'] = title_parts[1].strip() if len(title_parts) > 1 else ''
                     current_field = 'title'
+                elif line.lower().startswith('description:'):
+                    # 如果遇到描述字段但当前测试用例为空，先创建一个新的测试用例
+                    if not current_test_case:
+                        current_test_case = {
+                            'id': f'TC{len(test_cases)+1:03d}',  # 自动生成ID
+                            'title': '',
+                            'description': '',
+                            'preconditions': [],
+                            'steps': [],
+                            'expected_results': [],
+                            'priority': '',
+                            'category': ''
+                        }
+                    current_test_case['description'] = line.split(':', 1)[1].strip() if len(line.split(':', 1)) > 1 else ''
+                    current_field = 'description'
                 elif line.lower().startswith('preconditions:'):
                     # 如果遇到前置条件字段但当前测试用例为空，先创建一个新的测试用例
                     if not current_test_case:
                         current_test_case = {
                             'id': f'TC{len(test_cases)+1:03d}',  # 自动生成ID
                             'title': '',
+                            'description': '',
                             'preconditions': [],
                             'steps': [],
                             'expected_results': [],
@@ -464,6 +485,7 @@ class TestCaseWriterAgent:
                         current_test_case = {
                             'id': f'TC{len(test_cases)+1:03d}',  # 自动生成ID
                             'title': '',
+                            'description': '',
                             'preconditions': [],
                             'steps': [],
                             'expected_results': [],
@@ -477,6 +499,7 @@ class TestCaseWriterAgent:
                         current_test_case = {
                             'id': f'TC{len(test_cases)+1:03d}',  # 自动生成ID
                             'title': '',
+                            'description': '',
                             'preconditions': [],
                             'steps': [],
                             'expected_results': [],
@@ -490,6 +513,7 @@ class TestCaseWriterAgent:
                         current_test_case = {
                             'id': f'TC{len(test_cases)+1:03d}',  # 自动生成ID
                             'title': '',
+                            'description': '',
                             'preconditions': [],
                             'steps': [],
                             'expected_results': [],
@@ -504,6 +528,7 @@ class TestCaseWriterAgent:
                         current_test_case = {
                             'id': f'TC{len(test_cases)+1:03d}',  # 自动生成ID
                             'title': '',
+                            'description': '',
                             'preconditions': [],
                             'steps': [],
                             'expected_results': [],
@@ -520,6 +545,13 @@ class TestCaseWriterAgent:
                             current_test_case[current_field].append(line.strip()[1:].strip())
                         elif line.strip().startswith(('1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.', '0.')):
                             current_test_case[current_field].append(line.strip().split('.', 1)[1].strip())
+                    elif current_field in ['description', 'title']:
+                        # 对于字符串字段，如果当前行不是新的字段标识，则追加到现有内容
+                        if not any(line.lower().startswith(field + ':') for field in ['id:', 'title:', 'description:', 'preconditions:', 'steps:', 'expected results:', 'priority:', 'category:']):
+                            if current_test_case[current_field]:  # 如果已有内容，添加换行
+                                current_test_case[current_field] += ' ' + line.strip()
+                            else:  # 如果没有内容，直接设置
+                                current_test_case[current_field] = line.strip()
             
             # 如果存在最后一个测试用例则添加
             if current_test_case and self._validate_test_case(current_test_case):
@@ -543,7 +575,7 @@ class TestCaseWriterAgent:
         try:
             # 检查是否所有必需字段都存在
             required_fields = [
-                "id", "title", "preconditions", "steps",
+                "id", "title", "description", "preconditions", "steps",
                 "expected_results", "priority", "category"
             ]
             if not all(field in test_case for field in required_fields):
@@ -553,6 +585,11 @@ class TestCaseWriterAgent:
             # 验证字段内容
             if not test_case["id"] or not test_case["title"]:
                 logger.warning(f"测试用例ID或标题为空: {test_case.get('id', 'unknown')}")
+                return False
+            
+            # 验证描述字段
+            if not test_case["description"]:
+                logger.warning(f"测试用例描述为空: {test_case.get('id', 'unknown')}")
                 return False
             
             # 确保步骤和预期结果不为空
@@ -680,11 +717,12 @@ class TestCaseWriterAgent:
             对每个测试用例，请提供：
             1. 用例ID（格式：TC-{feature}-XXX，例如TC-文件上传-001）
             2. 标题（必须包含功能点名称）
-            3. 前置条件
-            4. 测试步骤
-            5. 预期结果
-            6. 优先级（使用上述优先级定义）
-            7. 类别（对应测试覆盖矩阵中的测试类型）
+            3. 描述（详细说明测试的目的和范围）
+            4. 前置条件
+            5. 测试步骤
+            6. 预期结果
+            7. 优先级（使用上述优先级定义）
+            8. 类别（对应测试覆盖矩阵中的测试类型）
             
             请直接提供测试用例，无需等待进一步确认。"""
             
@@ -716,14 +754,14 @@ class TestCaseWriterAgent:
                 测试用例必须使用以下优先级：
                 {priority_info}
                 
-                每个测试用例必须包含：ID、标题、前置条件、测试步骤、预期结果、优先级和类别。
+                每个测试用例必须包含：ID、标题、描述、前置条件、测试步骤、预期结果、优先级和类别。
                 ID格式必须为TC{feature}XXX，标题必须包含功能点名称 '{feature}'。
                 优先级必须使用P0、P1等格式，类别必须与测试类型对应。
                 
                 请以JSON格式返回测试用例，确保格式正确。"""
                 
                 # 重新尝试生成测试用例，使用更明确的JSON格式要求
-                retry_prompt += "\n\n请务必以以下格式返回JSON：\n``json\n{\n  \"test_cases\": [\n    {\n      \"id\": \"TC车牌识别001\",\n      \"title\": \"车牌识别功能验证\",\n      \"preconditions\": [\"前置条件1\", \"前置条件2\"],\n      \"steps\": [\"步骤1\", \"步骤2\"],\n      \"expected_results\": [\"预期结果1\", \"预期结果2\"],\n      \"priority\": \"P0\",\n      \"category\": \"功能测试\"\n    }\n  ]\n}\n```\n\n请确保JSON格式正确，所有字段都存在且有效。"
+                retry_prompt += "\n\n请务必以以下格式返回JSON：\n``json\n{\n  \"test_cases\": [\n    {\n      \"id\": \"TC车牌识别001\",\n      \"title\": \"车牌识别功能验证\",\n      \"description\": \"验证车牌识别功能的准确性和稳定性\",\n      \"preconditions\": [\"前置条件1\", \"前置条件2\"],\n      \"steps\": [\"步骤1\", \"步骤2\"],\n      \"expected_results\": [\"预期结果1\", \"预期结果2\"],\n      \"priority\": \"P0\",\n      \"category\": \"功能测试\"\n    }\n  ]\n}\n```\n\n请确保JSON格式正确，所有字段都存在且有效。"
                 
                 user_proxy.initiate_chat(
                     self.agent,
