@@ -2,15 +2,11 @@
 import os
 import json
 import logging
-from dotenv import load_dotenv
 from src.agents.test_case_writer import TestCaseWriterAgent
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-# 加载环境变量
-load_dotenv()
 
 def test_generate_feature_test_cases():
     """测试为特定功能点生成测试用例的功能，就是测试用例覆盖矩阵"""

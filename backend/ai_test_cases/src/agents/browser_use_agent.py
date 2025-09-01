@@ -6,7 +6,7 @@ import sys
 import os
 import logging
 import json
-from dotenv import load_dotenv
+
 
 # 设置控制台编码为 UTF-8
 if sys.platform == 'win32':
@@ -41,12 +41,17 @@ class UnicodeStreamHandler(logging.StreamHandler):
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 
-# 加载环境变量
-load_dotenv()
-# env_vars = load_env_variables()
-base_url = os.getenv('QWEN_BASE_URL')  # 修改为使用通义千问的URL
-api_key = os.getenv('QWEN_API_KEY')    # 修改为使用通义千问的API Key
-model_v3 = os.getenv('QWEN_MODEL')     # 修改为使用通义千问的模型
+# 从数据库读取AI配置
+from src.utils.ai_config_service import ai_config_service
+
+# 获取AI配置
+ai_config = ai_config_service.get_langchain_config()
+if not ai_config:
+    raise ValueError("无法从数据库获取AI配置，请检查数据库连接和配置")
+
+base_url = ai_config['base_url']
+api_key = ai_config['api_key']
+model_v3 = ai_config['model']
 
 # 设置环境变量
 os.environ['OPENAI_API_KEY'] = api_key
