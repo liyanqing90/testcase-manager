@@ -45,9 +45,17 @@
           </el-form-item>
         </el-form>
         <div class="ai-generate-form-btn-outer">
-          <el-button type="success" class="ai-generate-upload-btn" :loading="loading" :disabled="!fileObj || loading" @click="handleGenerate">
-            <el-icon style="margin-right:6px;" v-if="!loading"><document /></el-icon>
-            生成用例
+          <el-button type="success" class="ai-generate-upload-btn" :disabled="!fileObj || loading" @click="handleGenerate">
+            <template v-if="loading">
+              <div class="saving-inline">
+                <div class="circular-loading"></div>
+                生成用例
+              </div>
+            </template>
+            <template v-else>
+              <el-icon style="margin-right:6px;"><document /></el-icon>
+              生成用例
+            </template>
           </el-button>
         </div>
       </el-card>
@@ -1070,5 +1078,25 @@ async function fetchFileList() {
     margin-bottom: 0;
     padding: 16px 6vw 12px 6vw;
   }
+}
+
+.saving-inline {
+  display: inline-flex;
+  align-items: center;
+}
+
+.circular-loading {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e4e7ed;
+  border-top: 2px solid #409eff;
+  border-radius: 50%;
+  margin-right: 8px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style> 

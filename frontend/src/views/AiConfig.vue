@@ -76,10 +76,18 @@
           </el-form-item>
           
           <el-form-item>
-            <el-button type="primary" @click="saveConfig" :loading="saving">
-              保存配置
+            <el-button type="primary" @click="saveConfig" :disabled="saving">
+              <template v-if="saving">
+                <div class="saving-inline">
+                  <div class="circular-loading"></div>
+                  正在保存
+                </div>
+              </template>
+              <template v-else>
+                保存配置
+              </template>
             </el-button>
-            <el-button @click="resetConfig">重置</el-button>
+            <el-button @click="resetConfig" :disabled="saving">重置</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -265,5 +273,25 @@ const resetConfig = () => {
 
 .el-form-item:last-child .el-button {
   margin: 0 8px;
+}
+
+.saving-inline {
+  display: inline-flex;
+  align-items: center;
+}
+
+.circular-loading {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e4e7ed;
+  border-top: 2px solid #409eff;
+  border-radius: 50%;
+  margin-right: 8px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style> 
