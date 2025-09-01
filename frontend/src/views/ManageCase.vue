@@ -382,11 +382,11 @@
                    :class="{ 'marking': isMarkingComplete }"
                    :style="{ pointerEvents: isMarkingComplete ? 'none' : 'auto' }"
               >
-                <div class="mark-icon" :class="{ 'completed': currentTestCase && (currentTestCase.status === 'success') && !isMarkingComplete }">
+                <div class="mark-icon" :class="{ 'completed': currentTestCase && (currentTestCase.status && currentTestCase.status.toLowerCase() === 'success') && !isMarkingComplete }">
                   <svg v-if="isMarkingComplete" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 2V6M12 18V22M4.93 4.93L7.76 7.76M16.24 16.24L19.07 19.07M2 12H6M18 12H22M4.93 19.07L7.76 16.24M16.24 7.76L19.07 4.93" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
-                  <svg v-else-if="currentTestCase && (currentTestCase.status === 'success')" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg v-else-if="currentTestCase && (currentTestCase.status && currentTestCase.status.toLowerCase() === 'success')" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
                   <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -394,7 +394,7 @@
                   </svg>
                 </div>
                 <span class="mark-text">
-                  {{ isMarkingComplete ? '处理中...' : (currentTestCase && (currentTestCase.status === 'success') ? '已完成' : '标记完成') }}
+                  {{ isMarkingComplete ? '处理中...' : (currentTestCase && (currentTestCase.status && currentTestCase.status.toLowerCase() === 'success') ? '已完成' : '标记完成') }}
                 </span>
               </div>
             </div>
@@ -479,9 +479,15 @@
               <el-col :span="8">
                 <el-form-item label="分类" prop="category">
                   <el-select v-model="editForm.category" placeholder="请选择分类">
-                    <el-option label="功能测试" value="功能测试" />
-                    <el-option label="接口测试" value="接口测试" />
-                    <el-option label="UI自动化测试" value="UI自动化测试" />
+                    <el-option label="功能测试" value="功能测试"></el-option>
+                    <el-option label="接口测试" value="接口测试" disabled></el-option>
+                    <el-option label="UI自动化测试" value="UI自动化测试" disabled></el-option>
+                    <!-- 如果原有分类不在预定义选项中，显示为自定义选项 -->
+                    <el-option 
+                      v-if="editForm.category && !['功能测试', '接口测试', 'UI自动化测试'].includes(editForm.category)"
+                      :label="editForm.category" 
+                      :value="editForm.category">
+                    </el-option>
                   </el-select>
                 </el-form-item>
               </el-col>
@@ -953,7 +959,8 @@ export default {
       }
 
       // 如果已经是已完成状态，直接返回
-      if (this.currentTestCase.status === 'success' || this.currentTestCase.status === '已完成') {
+      const currentStatus = this.currentTestCase.status ? this.currentTestCase.status.toLowerCase() : '';
+      if (currentStatus === 'success') {
         this.$message.info('用例已经是已完成状态');
         return;
       }
@@ -1065,6 +1072,9 @@ export default {
     getStatusType(status) {
       if (!status) return 'info';
       
+      // 统一转换为小写进行比较
+      const statusLower = status.toLowerCase();
+      
       const statusMap = {
         '跳过': 'info',
         '待执行': 'info',
@@ -1078,12 +1088,22 @@ export default {
         'running': 'warning',
         'draft': 'info'
       };
-      return statusMap[status] || 'info';
+      
+      // 先尝试直接匹配（用于中文状态）
+      if (statusMap[status]) {
+        return statusMap[status];
+      }
+      
+      // 再尝试小写匹配（用于英文状态）
+      return statusMap[statusLower] || 'info';
     },
 
     // 获取状态显示文本
     getStatusDisplay(status) {
       if (!status) return '未设置';
+      
+      // 统一转换为小写进行比较
+      const statusLower = status.toLowerCase();
       
       const statusDisplayMap = {
         'draft': '未完成',
@@ -1095,7 +1115,7 @@ export default {
         'running': '执行中'
       };
       
-      return statusDisplayMap[status] || status;
+      return statusDisplayMap[statusLower] || status;
     },
 
     uploadTestCases() {
@@ -1239,6 +1259,23 @@ export default {
 
     // 编辑用例相关方法
     editTestCase(testCase) {
+      // 处理状态值的映射，确保与表单选项值一致
+      let mappedStatus = testCase.status;
+      if (testCase.status) {
+        const statusLower = testCase.status.toLowerCase();
+        // 映射状态值到表单选项值
+        const statusMapping = {
+          'draft': 'draft',
+          'success': 'success',
+          'failed': 'failed',
+          'blocked': 'blocked',
+          'skipped': 'skipped',
+          'pending': 'pending',
+          'running': 'running'
+        };
+        mappedStatus = statusMapping[statusLower] || testCase.status;
+      }
+
       this.editForm = {
         id: testCase.id,
         case_id: testCase.case_id,
@@ -1249,7 +1286,7 @@ export default {
         expected_results: testCase.expected_results || '',
         priority: testCase.priority,
         category: testCase.category,
-        status: testCase.status,
+        status: mappedStatus,
         project_id: this.currentProject.id
       };
       this.editDialogVisible = true;

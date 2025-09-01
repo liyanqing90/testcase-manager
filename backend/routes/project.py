@@ -137,15 +137,16 @@ def add_test_case(project_id):
         if data['priority'] not in valid_priorities:
             return jsonify({'error': '无效的优先级值'}), 400
         
-        # 验证状态值
+        # 验证状态值 - 统一转换为小写进行比较
         valid_statuses = ['success', 'failed', 'blocked', 'skipped', 'pending', 'running', 'draft']
-        if data['status'] not in valid_statuses:
-            return jsonify({'error': '无效的状态值'}), 400
+        received_status = data['status'].lower() if data['status'] else ''
+        if received_status not in valid_statuses:
+            return jsonify({'error': f'无效的状态值: {data["status"]}, 有效值: {valid_statuses}'}), 400
         
-        # 验证分类值
-        valid_categories = ['功能测试', '接口测试', 'UI自动化测试']
+        # 验证分类值 - 添加时只允许功能测试
+        valid_categories = ['功能测试']
         if data['category'] not in valid_categories:
-            return jsonify({'error': '无效的分类值'}), 400
+            return jsonify({'error': f'无效的分类值: {data["category"]}, 添加用例时只允许选择: {valid_categories}'}), 400
         
         # 验证项目是否存在
         cur = mysql.connection.cursor()
@@ -168,7 +169,7 @@ def add_test_case(project_id):
         # 获取当前时间
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        # 1. 插入test_cases表
+        # 1. 插入test_cases表 - 确保状态值统一为小写
         cur.execute("""
             INSERT INTO test_cases (
                 case_id, title, description, preconditions, steps, 
@@ -184,7 +185,7 @@ def add_test_case(project_id):
             data.get('expected_results', ''),
             data['priority'],
             data['category'],
-            data['status'],
+            received_status,  # 使用转换后的小写状态值
             current_time,
             current_time,
             '用户',  # created_by

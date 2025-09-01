@@ -55,17 +55,18 @@ def update_test_case_status(test_case_id):
         if not status:
             return jsonify({'error': '状态参数不能为空'}), 400
         
-        # 验证状态值
+        # 验证状态值 - 统一转换为小写进行比较
         valid_statuses = ['success', 'failed', 'blocked', 'skipped', 'pending', 'running', 'draft']
-        if status not in valid_statuses:
-            return jsonify({'error': '无效的状态值'}), 400
+        received_status = status.lower() if status else ''
+        if received_status not in valid_statuses:
+            return jsonify({'error': f'无效的状态值: {status}, 有效值: {valid_statuses}'}), 400
         
         cur = mysql.connection.cursor()
         
-        # 更新测试用例状态
+        # 更新测试用例状态 - 确保状态值统一为小写
         cur.execute(
             "UPDATE test_cases SET status = %s, updated_at = %s, last_updated_by = %s WHERE id = %s",
-            (status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '用户', test_case_id)
+            (received_status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '用户', test_case_id)
         )
         
         mysql.connection.commit()
@@ -172,15 +173,17 @@ def update_test_case(test_case_id):
         if data['priority'] not in valid_priorities:
             return jsonify({'error': '无效的优先级值'}), 400
         
-        # 验证状态值
+        # 验证状态值 - 统一转换为小写进行比较
         valid_statuses = ['success', 'failed', 'blocked', 'skipped', 'pending', 'running', 'draft']
-        if data['status'] not in valid_statuses:
-            return jsonify({'error': '无效的状态值'}), 400
+        received_status = data['status'].lower() if data['status'] else ''
+        if received_status not in valid_statuses:
+            return jsonify({'error': f'无效的状态值: {data["status"]}, 有效值: {valid_statuses}'}), 400
         
-        # 验证分类值
-        valid_categories = ['功能测试', '接口测试', 'UI自动化测试']
-        if data['category'] not in valid_categories:
-            return jsonify({'error': '无效的分类值'}), 400
+        # 验证分类值 - 编辑时允许任何分类值，不进行限制
+        # 注释掉分类值校验，允许保存原有的任何分类值
+        # valid_categories = ['功能测试', '接口测试', 'UI自动化测试']
+        # if data['category'] not in valid_categories:
+        #     return jsonify({'error': f'无效的分类值: {data["category"]}, 有效值: {valid_categories}'}), 400
         
         cur = mysql.connection.cursor()
         
@@ -197,7 +200,7 @@ def update_test_case(test_case_id):
         # 获取当前时间
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        # 更新测试用例
+        # 更新测试用例 - 确保状态值统一为小写
         cur.execute("""
             UPDATE test_cases SET 
                 case_id = %s, title = %s, description = %s, preconditions = %s,
@@ -213,7 +216,7 @@ def update_test_case(test_case_id):
             data.get('expected_results', ''),
             data['priority'],
             data['category'],
-            data['status'],
+            received_status,  # 使用转换后的小写状态值
             current_time,
             '用户',  # last_updated_by
             test_case_id
