@@ -482,11 +482,11 @@
                     <el-option label="功能测试" value="功能测试"></el-option>
                     <el-option label="接口测试" value="接口测试" disabled></el-option>
                     <el-option label="UI自动化测试" value="UI自动化测试" disabled></el-option>
-                    <!-- 如果原有分类不在预定义选项中，显示为自定义选项 -->
+                    <!-- 如果原始分类不在预定义选项中，始终显示该自定义选项 -->
                     <el-option 
-                      v-if="editForm.category && !['功能测试', '接口测试', 'UI自动化测试'].includes(editForm.category)"
-                      :label="editForm.category" 
-                      :value="editForm.category">
+                      v-if="originalEditCategory && !['功能测试', '接口测试', 'UI自动化测试'].includes(originalEditCategory)"
+                      :label="originalEditCategory" 
+                      :value="originalEditCategory">
                     </el-option>
                   </el-select>
                 </el-form-item>
@@ -688,6 +688,7 @@ export default {
       currentTestCaseIndex: -1,
       isMarkingComplete: false,  // 添加标记状态控制
       isNavigating: false,       // 添加导航状态控制
+      originalEditCategory: '',
       testCaseSearchText: '',    // 用例搜索文本
       filteredTestCases: [],     // 过滤后的用例列表
       addTestCaseDialogVisible: false, // 添加用例弹窗显示状态
@@ -1276,6 +1277,9 @@ export default {
         mappedStatus = statusMapping[statusLower] || testCase.status;
       }
 
+      // 记录原始分类值，供下拉中始终展示
+      this.originalEditCategory = testCase.category || '';
+
       this.editForm = {
         id: testCase.id,
         case_id: testCase.case_id,
@@ -1306,6 +1310,8 @@ export default {
         status: '',
         project_id: ''
       };
+      // 重置原始分类缓存
+      this.originalEditCategory = '';
     },
 
     submitEdit() {
