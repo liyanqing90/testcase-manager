@@ -134,6 +134,86 @@ class AIConfigService:
                 "base_url": config['base_url'],
                 "price": [config['prompt_price'], config['completion_price']]
             }
+        elif model_type == 'deepseek':
+            # DeepSeek配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        elif model_type == 'zhipu':
+            # 智谱AI配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        elif model_type == 'openai':
+            # OpenAI配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        elif model_type == 'wenxin':
+            # 百度文心一言配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        elif model_type == 'xunfei':
+            # 讯飞星火配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        elif model_type == 'minimax':
+            # MiniMax配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        elif model_type == 'moonshot':
+            # 月之暗面配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        elif model_type == '360':
+            # 360智脑配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        elif model_type == 'claude':
+            # Claude (Anthropic)配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        elif model_type == 'gemini':
+            # Gemini (Google)配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
         else:
             # 通义千问等默认配置
             return {
@@ -159,6 +239,76 @@ class AIConfigService:
         
         if model_type == 'volcengine':
             # 字节跳动（火山引擎）配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == 'deepseek':
+            # DeepSeek配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == 'zhipu':
+            # 智谱AI配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == 'openai':
+            # OpenAI配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == 'wenxin':
+            # 百度文心一言配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == 'xunfei':
+            # 讯飞星火配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == 'minimax':
+            # MiniMax配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == 'moonshot':
+            # 月之暗面配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == '360':
+            # 360智脑配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == 'claude':
+            # Claude (Anthropic)配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        elif model_type == 'gemini':
+            # Gemini (Google)配置
             return {
                 "base_url": config['base_url'],
                 "api_key": config['api_key'],
