@@ -23,9 +23,7 @@
               class="config-input"
             >
               <el-option label="通义千问" value="qwen" />
-              <el-option label="OpenAI" value="openai" />
-              <el-option label="Claude" value="claude" />
-              <el-option label="Gemini" value="gemini" />
+              <el-option label="字节跳动（火山引擎）" value="volcengine" />
             </el-select>
           </el-form-item>
           
@@ -84,7 +82,7 @@
                 </div>
               </template>
               <template v-else>
-                保存配置
+              保存配置
               </template>
             </el-button>
             <el-button @click="resetConfig" :disabled="saving">重置</el-button>

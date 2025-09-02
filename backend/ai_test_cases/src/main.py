@@ -77,8 +77,16 @@ class AITestingSystem:
                 result = await self.assistant.coordinate_workflow(task)
                 logger.info(f"工作流程协调结果: {result}")
             except Exception as e:
-                logger.error(f"工作流程协调错误: {str(e)}")
-                return {'status': 'error', 'message': f'工作流程协调错误: {str(e)}'}
+                error_msg = str(e)
+                
+                # 检查是否是429错误（API限流）
+                if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+                    logger.warning("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+                    logger.warning("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+                    return {'status': 'error', 'message': 'API限流错误 - 请检查您的账户余额、RPM限制或API配额设置'}
+                else:
+                    logger.error(f"工作流程协调错误: {error_msg}")
+                    return {'status': 'error', 'message': f'工作流程协调错误: {error_msg}'}
             
             # 如果需要修改，返回错误信息
             if result.get('status') == 'needs_revision':
@@ -193,7 +201,15 @@ class AITestingSystem:
             }
             
         except Exception as e:
-            logger.error(f"Error processing requirements: {str(e)}")
+            error_msg = str(e)
+            
+            # 检查是否是429错误（API限流）
+            if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+                logger.warning("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+                logger.warning("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+            else:
+                logger.error(f"Error processing requirements: {error_msg}")
+            
             raise
 
 async def main():
@@ -226,10 +242,17 @@ async def main():
         else:
             print(f"测试执行失败: {result.get('message', '未知错误')}")
     except Exception as e:
-        print(f"程序执行错误: {str(e)}")
-        print("使用方法示例:")
-        print("1. 生成测试用例: python src/main.py -d docs/需求文档.pdf -t functional -o test_cases.xlsx")
-        print("2. 执行UI测试: python src/main.py -i test_cases.json -t ui_auto -o test_results.xlsx")
+        error_msg = str(e)
+        
+        # 检查是否是429错误（API限流）
+        if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+            print("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+            print("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+        else:
+            print(f"程序执行错误: {error_msg}")
+            print("使用方法示例:")
+            print("1. 生成测试用例: python src/main.py -d docs/需求文档.pdf -t functional -o test_cases.xlsx")
+            print("2. 执行UI测试: python src/main.py -i test_cases.json -t ui_auto -o test_results.xlsx")
 
 if __name__ == "__main__":
     asyncio.run(main())

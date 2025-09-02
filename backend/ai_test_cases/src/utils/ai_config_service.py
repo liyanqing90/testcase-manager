@@ -122,13 +122,26 @@ class AIConfigService:
         config = self.get_ai_config()
         if not config:
             return None
-            
-        return {
-            "model": config['model_version'],
-            "api_key": config['api_key'],
-            "base_url": config['base_url'],
-            "price": [config['prompt_price'], config['completion_price']]
-        }
+        
+        # 根据模型类型返回不同的配置格式
+        model_type = config.get('model_type', 'qwen')
+        
+        if model_type == 'volcengine':
+            # 字节跳动（火山引擎）配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
+        else:
+            # 通义千问等默认配置
+            return {
+                "model": config['model_version'],
+                "api_key": config['api_key'],
+                "base_url": config['base_url'],
+                "price": [config['prompt_price'], config['completion_price']]
+            }
     
     def get_langchain_config(self) -> Optional[Dict]:
         """
@@ -140,12 +153,24 @@ class AIConfigService:
         config = self.get_ai_config()
         if not config:
             return None
-            
-        return {
-            "base_url": config['base_url'],
-            "api_key": config['api_key'],
-            "model": config['model_version']
-        }
+        
+        # 根据模型类型返回不同的配置格式
+        model_type = config.get('model_type', 'qwen')
+        
+        if model_type == 'volcengine':
+            # 字节跳动（火山引擎）配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
+        else:
+            # 通义千问等默认配置
+            return {
+                "base_url": config['base_url'],
+                "api_key": config['api_key'],
+                "model": config['model_version']
+            }
     
     def check_database_connection(self) -> bool:
         """检查数据库连接是否正常"""

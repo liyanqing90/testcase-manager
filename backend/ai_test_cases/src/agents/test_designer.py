@@ -238,7 +238,14 @@ class TestDesignerAgent:
                             test_strategy = actual_data
                         except json.JSONDecodeError as e:
                             logger.error(f"解析content字段中的JSON失败: {str(e)}")
-                            logger.warning("将使用原始test_strategy进行规范化")
+                            logger.warning("尝试使用JSON解析器修复content字段")
+                            # 使用统一的JSON解析器尝试修复和解析
+                            fixed_data = self.json_parser.parse(content_str, "test_design")
+                            if fixed_data:
+                                logger.info("成功修复并解析content字段")
+                                test_strategy = fixed_data
+                            else:
+                                logger.warning("JSON修复失败，将使用原始test_strategy进行规范化")
                     else:
                         logger.warning(f"content字段不是字符串类型: {type(content_str)}")
                         test_strategy = content_str
@@ -246,14 +253,28 @@ class TestDesignerAgent:
                 # 验证和规范化数据结构，确保符合TestDesignResponse模型要求
                 normalized_strategy = self._normalize_test_strategy(test_strategy)
                 
-                # 保存设计结果到last_design属性
-                self.last_design = normalized_strategy
-                
-                # 将设计结果保存到文件
-                self.agent_io.save_result("test_designer", normalized_strategy)
-                
-                logger.info("测试设计完成")
-                return normalized_strategy
+                # 验证规范化结果是否有效
+                if self._validate_normalized_strategy(normalized_strategy):
+                    # 保存设计结果到last_design属性
+                    self.last_design = normalized_strategy
+                    
+                    # 将设计结果保存到文件
+                    self.agent_io.save_result("test_designer", normalized_strategy)
+                    
+                    logger.info("测试设计完成")
+                    return normalized_strategy
+                else:
+                    logger.warning("规范化结果验证失败，尝试备用策略")
+                    # 尝试从原始响应中提取信息
+                    fallback_strategy = self._extract_fallback_from_text(response_str)
+                    if fallback_strategy:
+                        self.last_design = fallback_strategy
+                        self.agent_io.save_result("test_designer", fallback_strategy)
+                        logger.info("使用备用策略完成测试设计")
+                        return fallback_strategy
+                    else:
+                        logger.error("所有策略都失败，返回默认结构")
+                        return self._get_default_strategy()
             else:
                 # 如果无法解析JSON，尝试文本提取备用策略
                 logger.warning("无法从响应中提取JSON格式的测试策略，尝试文本提取")
@@ -263,40 +284,20 @@ class TestDesignerAgent:
                 
                 # 如果文本提取也失败，返回默认结构
                 logger.warning("所有解析方法都失败，返回默认测试策略结构")
-                return {
-                    "test_approach": {
-                        "methodology": [],
-                        "tools": [],
-                        "frameworks": []
-                    },
-                    "coverage_matrix": [],
-                    "priorities": [],
-                    "resource_estimation": {
-                        "time": None,
-                        "personnel": None,
-                        "tools": [],
-                        "additional_resources": []
-                    }
-                }
+                return self._get_default_strategy()
 
         except Exception as e:
-            logger.error(f"测试设计过程中出错: {str(e)}")
+            error_msg = str(e)
+            
+            # 检查是否是429错误（API限流）
+            if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+                logger.warning("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+                logger.warning("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+            else:
+                logger.error(f"测试设计过程中出错: {error_msg}")
+            
             # 发生异常时返回默认结构
-            return {
-                "test_approach": {
-                    "methodology": [],
-                    "tools": [],
-                    "frameworks": []
-                },
-                "coverage_matrix": [],
-                "priorities": [],
-                "resource_estimation": {
-                    "time": None,
-                    "personnel": None,
-                    "tools": [],
-                    "additional_resources": []
-                }
-            }
+            return self._get_default_strategy()
 
 
     
@@ -848,3 +849,73 @@ class TestDesignerAgent:
         except Exception as e:
             logger.error(f"提取资源估算错误: {str(e)}")
             return resource_estimation
+    
+    def _validate_normalized_strategy(self, strategy: Dict) -> bool:
+        """验证规范化后的测试策略是否有效"""
+        try:
+            # 检查基本结构
+            if not isinstance(strategy, dict):
+                return False
+            
+            # 检查必需字段
+            required_fields = ['test_approach', 'coverage_matrix', 'priorities', 'resource_estimation']
+            for field in required_fields:
+                if field not in strategy:
+                    logger.warning(f"缺少必需字段: {field}")
+                    return False
+            
+            # 检查test_approach字段
+            test_approach = strategy.get('test_approach', {})
+            if not isinstance(test_approach, dict):
+                logger.warning("test_approach字段格式不正确")
+                return False
+            
+            # 检查是否有实际内容
+            has_content = False
+            if test_approach.get('methodology'):
+                has_content = True
+            if test_approach.get('tools'):
+                has_content = True
+            if test_approach.get('frameworks'):
+                has_content = True
+            if strategy.get('coverage_matrix'):
+                has_content = True
+            if strategy.get('priorities'):
+                has_content = True
+            
+            if not has_content:
+                logger.warning("测试策略缺少实际内容")
+                return False
+            
+            return True
+        except Exception as e:
+            logger.error(f"验证测试策略时出错: {str(e)}")
+            return False
+    
+    def _get_default_strategy(self) -> Dict:
+        """获取默认的测试策略结构"""
+        return {
+            "test_approach": {
+                "methodology": ["功能测试", "安全测试", "性能测试"],
+                "tools": ["Selenium", "JMeter", "Postman"],
+                "frameworks": ["TestNG", "JUnit"]
+            },
+            "coverage_matrix": [
+                {
+                    "feature": "基本功能测试",
+                    "test_type": "功能测试"
+                }
+            ],
+            "priorities": [
+                {
+                    "level": "P0",
+                    "description": "核心功能测试"
+                }
+            ],
+            "resource_estimation": {
+                "time": "约2-3周",
+                "personnel": "测试工程师2名",
+                "tools": ["Selenium", "JMeter"],
+                "additional_resources": ["测试环境", "测试数据"]
+            }
+        }

@@ -72,7 +72,15 @@ class AssistantAgent:
                     max_turns=1  # 限制对话轮次为1，避免死循环
                 )
             except Exception as e:
-                logger.error(f"初始化对话错误: {str(e)}")
+                error_msg = str(e)
+                
+                # 检查是否是429错误（API限流）
+                if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+                    logger.warning("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+                    logger.warning("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+                else:
+                    logger.error(f"初始化对话错误: {error_msg}")
+                
                 # 即使初始化对话失败，我们也继续执行后续步骤
             
             # 记录协调开始
@@ -142,7 +150,15 @@ class AssistantAgent:
                     max_turns=1  # 限制对话轮次为1，避免死循环
                 )
             except Exception as e:
-                logger.error(f"确认需求分析结果错误: {str(e)}")
+                error_msg = str(e)
+                
+                # 检查是否是429错误（API限流）
+                if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+                    logger.warning("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+                    logger.warning("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+                else:
+                    logger.error(f"确认需求分析结果错误: {error_msg}")
+                
                 # 即使确认失败，我们也继续执行后续步骤
 
             # 检查确认结果
@@ -256,7 +272,15 @@ class AssistantAgent:
             return self._process_coordination_result(self.agent.last_message())
 
         except Exception as e:
-            logger.error(f"工作流程协调错误: {str(e)}")
+            error_msg = str(e)
+            
+            # 检查是否是429错误（API限流）
+            if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+                logger.warning("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+                logger.warning("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+            else:
+                logger.error(f"工作流程协调错误: {error_msg}")
+            
             raise
 
     def _process_coordination_result(self, message) -> dict:
@@ -367,11 +391,36 @@ class AssistantAgent:
                         if isinstance(scenario, dict):
                             # 确保字典包含所有必需的字段
                             if 'id' in scenario and 'description' in scenario:
+                                # 处理test_cases字段，兼容字典和字符串两种格式
                                 test_cases = scenario.get('test_cases', [])
+                                processed_test_cases = []
+                                
+                                if isinstance(test_cases, list):
+                                    for test_case in test_cases:
+                                        if isinstance(test_case, dict):
+                                            # 如果是字典，提取id字段作为字符串
+                                            if "id" in test_case:
+                                                processed_test_cases.append(test_case["id"])
+                                            else:
+                                                # 如果没有id字段，将整个字典转换为字符串
+                                                processed_test_cases.append(str(test_case))
+                                        elif isinstance(test_case, str):
+                                            # 如果已经是字符串，直接使用
+                                            processed_test_cases.append(test_case)
+                                        else:
+                                            # 其他类型转换为字符串
+                                            processed_test_cases.append(str(test_case))
+                                elif isinstance(test_cases, str):
+                                    # 如果test_cases是单个字符串，转换为列表
+                                    processed_test_cases = [test_cases]
+                                else:
+                                    # 其他情况，转换为字符串列表
+                                    processed_test_cases = [str(test_cases)] if test_cases else []
+                                
                                 test_scenarios.append(TestScenario(
                                     id=scenario['id'],
                                     description=scenario['description'],
-                                    test_cases=test_cases
+                                    test_cases=processed_test_cases
                                 ))
                         elif isinstance(scenario, str):
                             # 如果是字符串，创建一个默认的TestScenario对象
@@ -596,11 +645,23 @@ class AssistantAgent:
             return None
             
         except Exception as e:
-            logger.error(f"代理通信错误: {str(e)}")
-            error_response = ErrorResponse(
-                error_code="COMMUNICATION_ERROR",
-                error_message=str(e)
-            )
+            error_msg = str(e)
+            
+            # 检查是否是429错误（API限流）
+            if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+                logger.warning("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+                logger.warning("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+                error_response = ErrorResponse(
+                    error_code="RATE_LIMIT_ERROR",
+                    error_message="API限流错误 - 请检查您的账户余额、RPM限制或API配额设置"
+                )
+            else:
+                logger.error(f"代理通信错误: {error_msg}")
+                error_response = ErrorResponse(
+                    error_code="COMMUNICATION_ERROR",
+                    error_message=error_msg
+                )
+            
             raise ValueError(error_response.dict())
 
     def _monitor_progress(self):

@@ -185,13 +185,28 @@ class QualityAssuranceAgent:
             return result
 
         except Exception as e:
-            logger.error(f"测试用例审查错误: {str(e)}")
-            error_result = {
-                "error": str(e),
-                "reviewed_cases": test_cases if isinstance(test_cases, list) else [],
-                "review_comments": {},
-                "review_status": "error"
-            }
+            error_msg = str(e)
+            
+            # 检查是否是429错误（API限流）
+            if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+                logger.warning("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+                logger.warning("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+                error_result = {
+                    "error": "API限流错误",
+                    "details": "请检查您的账户余额、RPM限制或API配额设置",
+                    "reviewed_cases": test_cases if isinstance(test_cases, list) else [],
+                    "review_comments": {},
+                    "review_status": "rate_limited"
+                }
+            else:
+                logger.error(f"测试用例审查错误: {error_msg}")
+                error_result = {
+                    "error": error_msg,
+                    "reviewed_cases": test_cases if isinstance(test_cases, list) else [],
+                    "review_comments": {},
+                    "review_status": "error"
+                }
+            
             return error_result
             
     def _merge_feature_test_cases(self, batch_count: int) -> Dict:

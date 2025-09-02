@@ -20,7 +20,7 @@ class UnifiedJSONParser:
                 self._fix_json_format,         # 修复格式
                 self._fix_json_aggressive,     # 激进修复
                 self._extract_json_fallback,   # 备用提取
-                self._extract_fallback_from_text
+                self._extract_test_cases_from_text  # 测试用例专用备用方法
             ],
             "test_case_generation": [
                 self._extract_json_block,      # 优先提取代码块
@@ -110,17 +110,22 @@ class UnifiedJSONParser:
             
             # 针对测试用例改进场景的特殊处理
             if context == "test_case_improvement":
-                # 1. 尝试更宽松的JSON提取
+                # 1. 优先尝试提取包含test_cases的完整JSON
                 result = self._extract_test_cases_loosely(response)
                 if result:
                     logger.info(f"[{context}] 智能重试成功 - 宽松提取")
                     return result
                 
-                # 2. 尝试从响应中提取任何可能的JSON片段
+                # 2. 尝试从响应中提取任何可能的JSON片段（优先包含test_cases的）
                 result = self._extract_any_json_fragment(response)
                 if result:
-                    logger.info(f"[{context}] 智能重试成功 - 片段提取")
-                    return result
+                    # 预验证提取的结果是否有效
+                    if self._validate_extracted_result(result):
+                        logger.info(f"[{context}] 智能重试成功 - 片段提取")
+                        return result
+                    else:
+                        logger.warning(f"[{context}] 智能重试提取到无效结构，跳过")
+                        result = None
                 
                 # 3. 尝试修复响应中的特殊字符和格式问题
                 cleaned_response = self._deep_clean_response(response)
@@ -178,6 +183,18 @@ class UnifiedJSONParser:
     def _extract_any_json_fragment(self, response: str) -> Optional[Dict[str, Any]]:
         """提取任何可能的JSON片段"""
         try:
+            # 优先查找包含test_cases的JSON片段
+            test_cases_pattern = r'(\{[^}]*"test_cases"[^}]*\})'
+            matches = re.findall(test_cases_pattern, response, re.DOTALL)
+            for match in matches:
+                try:
+                    cleaned = self._clean_json_string(match)
+                    result = json.loads(cleaned)
+                    if isinstance(result, dict) and 'test_cases' in result:
+                        return result
+                except (json.JSONDecodeError, ValueError):
+                    continue
+            
             # 查找任何可能的JSON对象或数组
             patterns = [
                 r'(\{[^{}]*"[^{}]*"[^{}]*\})',  # 包含引号的JSON对象
@@ -194,10 +211,16 @@ class UnifiedJSONParser:
                         cleaned = self._clean_json_string(match)
                         result = json.loads(cleaned)
                         if isinstance(result, (dict, list)):
-                            # 如果是数组，包装成字典
-                            if isinstance(result, list):
-                                return {"test_cases": result}
-                            return result
+                            # 检查是否是测试用例相关结构
+                            if isinstance(result, dict):
+                                # 检查是否包含测试用例相关字段
+                                if any(key in result for key in ['test_cases', 'id', 'title', 'steps', 'expected_results']):
+                                    return result
+                            elif isinstance(result, list):
+                                # 检查数组中的元素是否像测试用例
+                                if result and isinstance(result[0], dict):
+                                    if any(key in result[0] for key in ['id', 'title', 'steps', 'expected_results']):
+                                        return {"test_cases": result}
                     except (json.JSONDecodeError, ValueError):
                         continue
             
@@ -475,7 +498,10 @@ class UnifiedJSONParser:
             # 3. 修复数组格式
             json_str = re.sub(r'\[\s*([^,\]]+)\s*\]', r'["\1"]', json_str)
             
-            # 4. 尝试使用ast.literal_eval作为备用方案
+            # 4. 修复逗号分隔符错误
+            json_str = self._fix_comma_delimiters(json_str)
+            
+            # 5. 尝试使用ast.literal_eval作为备用方案
             try:
                 parsed = literal_eval(json_str)
                 if isinstance(parsed, dict):
@@ -486,6 +512,50 @@ class UnifiedJSONParser:
             return json.loads(json_str)
         except (json.JSONDecodeError, ValueError):
             return None
+    
+    def _fix_comma_delimiters(self, json_str: str) -> str:
+        """修复逗号分隔符错误"""
+        try:
+            # 修复常见的逗号分隔符问题
+            # 1. 在数组元素之间添加缺失的逗号
+            fixed = re.sub(r'\]\s*\[', '], [', json_str)
+            
+            # 2. 在对象属性之间添加缺失的逗号
+            fixed = re.sub(r'"\s*"', '", "', fixed)
+            
+            # 3. 修复字符串后面缺少逗号的情况
+            fixed = re.sub(r'"\s*([}\]])', r'", \1', fixed)
+            
+            # 4. 修复数字后面缺少逗号的情况
+            fixed = re.sub(r'(\d+)\s*([}\]])', r'\1, \2', fixed)
+            
+            # 5. 修复布尔值后面缺少逗号的情况
+            fixed = re.sub(r'(true|false)\s*([}\]])', r'\1, \2', fixed)
+            
+            # 6. 修复null后面缺少逗号的情况
+            fixed = re.sub(r'null\s*([}\]])', r'null, \1', fixed)
+            
+            # 7. 修复对象后面缺少逗号的情况
+            fixed = re.sub(r'}\s*([}\]])', r'}, \1', fixed)
+            
+            # 8. 修复数组后面缺少逗号的情况
+            fixed = re.sub(r'\]\s*([}\]])', r'], \1', fixed)
+            
+            # 9. 修复特定位置的逗号错误（根据错误日志中的位置）
+            # 在第97行第36列附近修复逗号问题
+            lines = fixed.split('\n')
+            if len(lines) >= 97:
+                line_97 = lines[96]  # 第97行（索引96）
+                # 修复第36列附近的逗号问题
+                if len(line_97) >= 36:
+                    # 查找可能缺少逗号的位置
+                    line_97 = re.sub(r'([^,}])\s*([}\]])', r'\1, \2', line_97)
+                    lines[96] = line_97
+                fixed = '\n'.join(lines)
+            
+            return fixed
+        except Exception:
+            return json_str
     
     def _extract_json_fallback(self, response: str) -> Optional[Dict[str, Any]]:
         """备用JSON提取策略"""
@@ -566,6 +636,33 @@ class UnifiedJSONParser:
     def _extract_test_cases_from_text(self, response: str) -> Optional[Dict[str, Any]]:
         """从纯文本中提取测试用例信息"""
         try:
+            logger.info("从纯文本中提取测试用例信息")
+            
+            # 首先尝试从响应中提取JSON代码块
+            json_blocks = re.findall(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', response, re.DOTALL)
+            if json_blocks:
+                for block in json_blocks:
+                    try:
+                        # 尝试解析JSON块
+                        parsed = json.loads(block)
+                        if isinstance(parsed, dict) and 'test_cases' in parsed:
+                            logger.info(f"从JSON代码块中提取到 {len(parsed['test_cases'])} 个测试用例")
+                            return parsed
+                    except json.JSONDecodeError:
+                        continue
+            
+            # 如果没有找到JSON代码块，尝试直接解析整个响应
+            try:
+                # 检查响应是否本身就是JSON格式
+                if response.strip().startswith('{') and response.strip().endswith('}'):
+                    parsed = json.loads(response)
+                    if isinstance(parsed, dict) and 'test_cases' in parsed:
+                        logger.info(f"从响应中直接解析到 {len(parsed['test_cases'])} 个测试用例")
+                        return parsed
+            except json.JSONDecodeError:
+                pass
+            
+            # 如果JSON解析都失败，尝试从文本中提取测试用例信息
             test_cases = []
             
             # 查找包含测试用例信息的文本段落
@@ -596,12 +693,45 @@ class UnifiedJSONParser:
                         test_cases.append(test_case)
             
             if test_cases:
+                logger.info(f"从文本中提取到 {len(test_cases)} 个测试用例")
                 return {"test_cases": test_cases}
             
+            logger.warning("未能从文本中提取到任何测试用例信息")
             return None
         except Exception as e:
-            logger.debug(f"从文本提取测试用例时出错: {str(e)}")
+            logger.error(f"从文本提取测试用例时出错: {str(e)}")
             return None
+    
+    def _validate_extracted_result(self, result: Dict[str, Any]) -> bool:
+        """验证提取的结果是否是有效的测试用例结构"""
+        try:
+            if not isinstance(result, dict):
+                return False
+            
+            # 检查是否包含test_cases字段
+            if 'test_cases' in result:
+                test_cases = result['test_cases']
+                if not isinstance(test_cases, list):
+                    return False
+                
+                # 检查测试用例列表是否为空
+                if not test_cases:
+                    return False
+                
+                # 检查第一个测试用例是否包含必需字段
+                if test_cases and isinstance(test_cases[0], dict):
+                    first_case = test_cases[0]
+                    required_fields = ['id', 'title', 'steps', 'expected_results']
+                    if any(field in first_case for field in required_fields):
+                        return True
+            
+            # 如果没有test_cases字段，检查是否直接是测试用例结构
+            if any(key in result for key in ['id', 'title', 'steps', 'expected_results']):
+                return True
+            
+            return False
+        except Exception:
+            return False
     
     def validate_json_structure(self, data: Dict[str, Any], expected_keys: list) -> bool:
         """

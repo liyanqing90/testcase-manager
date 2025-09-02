@@ -1223,73 +1223,68 @@ class TestCaseWriterAgent:
             返回格式必须是JSON，保持与原始测试用例相同的结构。
             请直接返回完整的JSON格式测试用例，不要添加任何额外的解释。"""
             
-            # 最大重试次数
-            max_retries = 3
-            improved_cases = []
+            # 调用大模型改进测试用例
+            user_proxy.initiate_chat(
+                self.agent,
+                message=prompt,
+                max_turns=1  # 限制对话轮次为1，避免死循环
+            )
             
-            for attempt in range(max_retries):
-                try:
-                    # 调用大模型改进测试用例
-                    user_proxy.initiate_chat(
-                        self.agent,
-                        message=prompt,
-                        max_turns=1  # 限制对话轮次为1，避免死循环
-                    )
-                    
-                    # 获取大模型的响应
-                    response = None
-                    msg_list = user_proxy.chat_messages[self.agent]
-                    print(f'debug:{type(msg_list)}')
-                    response = msg_list[-1]['content']
+            # 获取大模型的响应
+            response = None
+            msg_list = user_proxy.chat_messages[self.agent]
+            print(f'debug:{type(msg_list)}')
+            response = msg_list[-1]['content']
 
-                    # 检查响应是否为空
-                    if not response:
-                        logger.warning(f"尝试 {attempt+1}/{max_retries}: 未能获取到test_case_writer的响应")
-                        continue
-                    
-                    logger.debug(f"尝试 {attempt+1}/{max_retries}: 获取到的响应内容: {response[:100]}...")
-                    
-                    # 解析响应
-                    improved_cases = self._parse_llm_response(response)
-                    
-                    # 验证改进后的测试用例
-                    if not improved_cases:
-                        logger.warning(f"尝试 {attempt+1}/{max_retries}: 大模型未返回有效的测试用例，将重试")
-                        continue
-                    
-                    # 确保改进后的测试用例包含所有必需字段
-                    validated_cases = []
-                    for case in improved_cases:
-                        if self._validate_test_case(case):
-                            validated_cases.append(case)
-                        else:
-                            logger.warning(f"改进后的测试用例验证失败: {case.get('id', 'unknown')}")
-                    
-                    if not validated_cases:
-                        logger.warning(f"尝试 {attempt+1}/{max_retries}: 所有改进后的测试用例验证失败，将重试")
-                        continue
-                    
-                    # 如果成功获取并验证了测试用例，跳出重试循环
-                    logger.info(f"成功使用大模型改进 {len(validated_cases)} 个测试用例")
-                    return validated_cases
-                    
-                except Exception as e:
-                    logger.error(f"尝试 {attempt+1}/{max_retries}: 使用大模型改进测试用例错误: {str(e)}")
-            
-            # 如果所有重试都失败，返回原始测试用例
-            if not improved_cases:
-                logger.warning("所有重试都失败，返回原始测试用例")
+            # 检查响应是否为空
+            if not response:
+                logger.warning("未能获取到test_case_writer的响应，使用原始测试用例")
                 return test_cases
             
-            return improved_cases
+            logger.debug(f"获取到的响应内容: {response[:100]}...")
+            
+            # 解析响应
+            improved_cases = self._parse_llm_response(response)
+            
+            # 验证改进后的测试用例
+            if not improved_cases:
+                logger.warning("大模型未返回有效的测试用例，直接使用原始测试用例")
+                return test_cases
+            
+            # 确保改进后的测试用例包含所有必需字段
+            validated_cases = []
+            for case in improved_cases:
+                if self._validate_test_case(case):
+                    validated_cases.append(case)
+                else:
+                    logger.warning(f"改进后的测试用例验证失败: {case.get('id', 'unknown')}")
+            
+            if not validated_cases:
+                logger.warning("所有改进后的测试用例验证失败，直接使用原始测试用例")
+                return test_cases
+            
+            # 如果成功获取并验证了测试用例，返回结果
+            logger.info(f"成功使用大模型改进 {len(validated_cases)} 个测试用例")
+            return validated_cases
             
         except Exception as e:
-            logger.error(f"使用大模型改进测试用例错误: {str(e)}")
+            error_msg = str(e)
+            
+            # 检查是否是429错误（API限流）
+            if "429" in error_msg or "TooManyRequests" in error_msg or "rate limit" in error_msg.lower():
+                logger.warning("API限流错误 - 请检查您的账户余额、RPM限制或API配额设置")
+                logger.warning("提示：不同AI服务商的限流策略不同，请查看对应服务商的文档了解具体限制")
+            else:
+                logger.error(f"使用大模型改进测试用例错误: {error_msg}")
+            
+            # 发生异常时返回原始测试用例
             return test_cases
     
     def _parse_llm_response(self, response) -> List[Dict]:
         """解析大模型的响应，提取改进后的测试用例。"""
         try:
+
+            
             # 检查response类型
             if isinstance(response, dict):
                 print(f'改进测试用例的响应debug: {response}')
@@ -1316,7 +1311,8 @@ class TestCaseWriterAgent:
                     logger.info(f"成功从JSON响应中解析出 {len(json_data)} 个改进后的测试用例")
                     return json_data
             
-            logger.warning("无法从响应中提取有效的测试用例")
+            # JSON解析失败，直接返回空列表，避免重试
+            logger.warning("JSON解析失败，无法从响应中提取有效的测试用例")
             return []
             
         except Exception as e:
