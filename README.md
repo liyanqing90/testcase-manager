@@ -264,28 +264,16 @@ npm install
 cd backend/ai_test_cases
 ```
 
-2. Create environment configuration file
-```bash
-# Create .env file
-touch .env
-```
-
-3. Configure AI interface parameters
-```bash
-# Edit .env file and add the following configuration
-QWEN_BASE_URL='https://your-ai-api-endpoint.com/v1'
-QWEN_API_KEY='your-api-key-here'
-QWEN_MODEL='qwen-turbo'  # or other supported model names
-
-# If using OpenAI, you can configure
-OPENAI_API_KEY='your-openai-api-key'
-OPENAI_BASE_URL='https://api.openai.com/v1'
-```
-
-4. Install AI system dependencies
+2. Install AI system dependencies
 ```bash
 pip install -r requirements.txt
 ```
+
+3. Configure AI model parameters
+- After starting the application, configure AI model parameters in the system settings page
+- Supports multiple AI models including Tongyi Qianwen, Volcengine, and others
+- Configuration includes API keys, model URLs, model versions, and other parameters
+- All configurations are done through the web interface, no need to manually edit configuration files
 
 #### Start Development Server
 ```bash
@@ -314,6 +302,17 @@ Frontend application will start at `http://localhost:5173`
 1. View Project Cases: Click the "View Cases" button on the project management page
 2. View Case Details: Click the "View" button in the case list to see complete case information
 
+### AI Model Configuration
+1. **Access Configuration Page**: Configure AI model parameters in the system settings page
+2. **Select Model Type**: Supports multiple AI models including Tongyi Qianwen, Volcengine, and others
+3. **Configure Parameters**: 
+   - API Key: Enter the API key for the corresponding AI service provider
+   - Model URL: Configure the model interface address
+   - Model Version: Select the specific model version
+   - Price Settings: Configure input and output token prices
+4. **Save Configuration**: Click the "Save Configuration" button to complete the setup
+5. **Verify Configuration**: The system will automatically verify the validity of the configuration
+
 ### AI Test Case Generation
 1. **Upload Documents**: Upload requirement documents in the AI generation page (supports Word, PDF, Markdown and other formats)
 2. **Configure Parameters**: 
@@ -336,6 +335,10 @@ Frontend application will start at `http://localhost:5173`
 ### File Upload
 - `POST /upload_case` - Upload Excel file and parse
 - `POST /import_case` - Import selected test cases
+
+### AI Model Configuration
+- `GET /api/ai_config` - Get AI model configuration
+- `POST /api/ai_config` - Save AI model configuration
 
 ### AI Test Case Generation
 - `POST /ai_generate/upload` - Upload requirement documents

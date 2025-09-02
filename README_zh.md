@@ -262,28 +262,16 @@ npm install
 cd backend/ai_test_cases
 ```
 
-2. 创建环境配置文件
-```bash
-# 创建.env文件
-touch .env
-```
-
-3. 配置AI接口参数
-```bash
-# 编辑.env文件，添加以下配置
-QWEN_BASE_URL='https://your-ai-api-endpoint.com/v1'
-QWEN_API_KEY='your-api-key-here'
-QWEN_MODEL='qwen-turbo'  # 或其他支持的模型名称
-
-# 如果使用OpenAI，可以配置
-OPENAI_API_KEY='your-openai-api-key'
-OPENAI_BASE_URL='https://api.openai.com/v1'
-```
-
-4. 安装AI系统依赖
+2. 安装AI系统依赖
 ```bash
 pip install -r requirements.txt
 ```
+
+3. 配置AI模型参数
+- 启动应用后，在系统设置页面配置AI模型参数
+- 支持通义千问、火山引擎等多种AI模型
+- 配置包括API密钥、模型URL、模型版本等参数
+- 所有配置都通过Web界面进行，无需手动编辑配置文件
 
 #### 启动开发服务器
 ```bash
@@ -312,6 +300,17 @@ npm run dev
 1. **查看项目用例**: 在项目管理页面点击"查看用例"按钮
 2. **查看用例详情**: 在用例列表中点击"查看"按钮查看完整用例信息
 
+### AI模型配置
+1. **进入配置页面**: 在系统设置页面配置AI模型参数
+2. **选择模型类型**: 支持通义千问、火山引擎等多种AI模型
+3. **配置参数**: 
+   - API密钥：输入对应AI服务商的API密钥
+   - 模型URL：配置模型接口地址
+   - 模型版本：选择具体的模型版本
+   - 价格设置：配置输入和输出token的价格
+4. **保存配置**: 点击"保存配置"按钮完成设置
+5. **验证配置**: 系统会自动验证配置的有效性
+
 ### AI测试用例生成
 1. **上传文档**: 在AI生成页面上传需求文档（支持Word、PDF、Markdown等格式）
 2. **配置参数**: 
@@ -334,6 +333,10 @@ npm run dev
 ### 文件上传
 - `POST /upload_case` - 上传Excel文件并解析
 - `POST /import_case` - 导入选中的测试用例
+
+### AI模型配置
+- `GET /api/ai_config` - 获取AI模型配置
+- `POST /api/ai_config` - 保存AI模型配置
 
 ### AI测试用例生成
 - `POST /ai_generate/upload` - 上传需求文档
@@ -467,6 +470,13 @@ QWEN_MODEL=qwen-turbo
 5. 打开 Pull Request
 
 ## 更新日志
+
+### V1.0.5 （2025-09-02）
+- ✅ 完成AI配置服务层
+- ✅ 增加多模型适配
+- ✅ 修复一些报错
+- ✅ 脱离env文件，改为配置化
+
 ### V1.0.4 (2025-08-29)
 - ✅ 增加AI生成用例策略组json识别
 - ✅ 增加用例需求分析功能点规则匹配度
