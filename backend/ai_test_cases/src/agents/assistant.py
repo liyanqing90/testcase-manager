@@ -9,28 +9,21 @@ from .requirement_analyst import RequirementAnalystAgent
 from .test_designer import TestDesignerAgent
 from .test_case_writer import TestCaseWriterAgent
 from .quality_assurance import QualityAssuranceAgent
-from dotenv import load_dotenv
 from schemas.communication import TestCase
 from src.utils.json_parser import UnifiedJSONParser
-
-load_dotenv()
 logger = logging.getLogger(__name__)
 
-# 使用 通义千问 配置
-qwen_api_key = os.getenv("QWEN_API_KEY")      # 修改为通义千问API Key
-qwen_base_url = os.getenv("QWEN_BASE_URL")    # 修改为通义千问URL
-qwen_model = os.getenv("QWEN_MODEL")          # 修改为通义千问模型
+# 从数据库读取AI配置
+from src.utils.ai_config_service import ai_config_service
 
 class AssistantAgent:
     def __init__(self, agents: List):
-        self.config_list = [
-            {
-                "model": qwen_model,        # 通义千问模型
-                "api_key": qwen_api_key,    # 通义千问API Key
-                "base_url": qwen_base_url,  # 通义千问URL
-                "price": [0.0, 0.0]        # 添加price字段消除警告：[prompt_price_per_1k, completion_token_price_per_1k]
-            }
-        ]
+        # 从数据库获取AI配置
+        ai_config = ai_config_service.get_autogen_config()
+        if not ai_config:
+            raise ValueError("无法从数据库获取AI配置，请检查数据库连接和配置")
+            
+        self.config_list = [ai_config]
         
         self.agent = autogen.AssistantAgent(
             name="coordinator",

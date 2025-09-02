@@ -199,9 +199,20 @@
         <el-table-column prop="modified_at" label="更新时间" min-width="180">
           <template #default="scope">{{ formatTime(scope.row.modified_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" width="200">
           <template #default="scope">
             <el-button type="primary" link @click="downloadFile(scope.row.filename)">下载</el-button>
+            <el-popconfirm
+              title="确定要删除这个文件吗？"
+              confirm-button-text="确定"
+              cancel-button-text="取消"
+              placement="top"
+              @confirm="deleteFile(scope.row.filename)"
+            >
+              <template #reference>
+                <el-button type="danger" link>删除</el-button>
+              </template>
+            </el-popconfirm>
           </template>
         </el-table-column>
       </el-table>
@@ -515,6 +526,25 @@ function downloadFile(name) {
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
+}
+
+async function deleteFile(name) {
+  try {
+    const res = await fetch(`/ai_generate/delete/${name}`, {
+      method: 'DELETE'
+    })
+    const data = await res.json()
+    
+    if (data.success) {
+      ElMessage.success(`文件 ${name} 删除成功`)
+      // 重新获取文件列表
+      fetchFileList()
+    } else {
+      ElMessage.error(data.error || '删除文件失败')
+    }
+  } catch (e) {
+    ElMessage.error('删除文件失败：' + e.message)
+  }
 }
 
 // 生成成功后的全局通知

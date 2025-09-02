@@ -5,17 +5,12 @@ import re
 import autogen
 from typing import Dict, List, Union
 import logging
-from dotenv import load_dotenv
 from src.utils.agent_io import AgentIO
 from src.utils.json_parser import UnifiedJSONParser
-
-load_dotenv()
 logger = logging.getLogger(__name__)
 
-# 通义千问配置
-qwen_api_key = os.getenv("QWEN_API_KEY")
-qwen_base_url = os.getenv("QWEN_BASE_URL")
-qwen_model = os.getenv("QWEN_MODEL")
+# 从数据库读取AI配置
+from src.utils.ai_config_service import ai_config_service
 
 class TestCaseWriterAgent:
     def __init__(self, concurrent_workers: int = 1):
@@ -25,14 +20,12 @@ class TestCaseWriterAgent:
         Args:
             concurrent_workers: 并发工作线程数，默认为1（不使用并发）
         """
-        self.config_list = [
-            {
-                "model": qwen_model,        # 通义千问模型
-                "api_key": qwen_api_key,    # 通义千问API Key
-                "base_url": qwen_base_url,  # 通义千问URL
-                "price": [0.0, 0.0]        # 添加price字段消除警告：[prompt_price_per_1k, completion_token_price_per_1k]
-            }
-        ]
+        # 从数据库获取AI配置
+        ai_config = ai_config_service.get_autogen_config()
+        if not ai_config:
+            raise ValueError("无法从数据库获取AI配置，请检查数据库连接和配置")
+            
+        self.config_list = [ai_config]
         
         # 初始化AgentIO用于保存和加载测试用例
         self.agent_io = AgentIO()

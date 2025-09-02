@@ -178,6 +178,34 @@ def download_file(filename):
         return jsonify({'error': f'下载失败: {str(e)}'}), 500
 
 
+@ai_generate_bp.route('/delete/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    """删除生成的测试用例文件"""
+    try:
+        # 构建文件路径
+        file_path = os.path.join(os.path.dirname(UPLOAD_FOLDER), filename)
+
+        if not os.path.exists(file_path):
+            return jsonify({'error': '文件不存在'}), 404
+
+        # 检查文件扩展名，只允许删除Excel文件
+        if not filename.endswith('.xlsx'):
+            return jsonify({'error': '只能删除Excel文件'}), 400
+
+        # 删除文件
+        os.remove(file_path)
+
+        return jsonify({
+            'success': True,
+            'message': f'文件 {filename} 删除成功'
+        })
+
+    except PermissionError:
+        return jsonify({'error': '没有权限删除文件'}), 403
+    except Exception as e:
+        return jsonify({'error': f'删除失败: {str(e)}'}), 500
+
+
 @ai_generate_bp.route('/files', methods=['GET'])
 def list_generated_files():
     """列出已生成的文件"""
