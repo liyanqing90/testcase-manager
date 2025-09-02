@@ -21,6 +21,16 @@
             >
               <el-option label="通义千问" value="qwen" />
               <el-option label="字节跳动（火山引擎）" value="volcengine" />
+              <el-option label="DeepSeek" value="deepseek" />
+              <el-option label="智谱AI" value="zhipu" />
+              <el-option label="OpenAI" value="openai" />
+              <el-option label="百度文心一言" value="wenxin" />
+              <el-option label="讯飞星火" value="xunfei" />
+              <el-option label="MiniMax" value="minimax" />
+              <el-option label="月之暗面" value="moonshot" />
+              <el-option label="360智脑" value="360" />
+              <el-option label="Claude (Anthropic)" value="claude" />
+              <el-option label="Gemini (Google)" value="gemini" />
             </el-select>
           </el-form-item>
           
@@ -114,8 +124,30 @@
               <el-collapse-item title="模型URL接口地址说明" name="3" class="custom-collapse-item">
                 <p>通义千问：https://dashscope.aliyuncs.com/compatible-mode/v1</p>
                 <p>火山引擎：https://ark.cn-beijing.volces.com/api/v3</p>
+                <p>DeepSeek：https://api.deepseek.com</p>
+                <p>智谱AI：https://open.bigmodel.cn/api/paas/v4</p>
+                <p>OpenAI：https://api.openai.com/v1</p>
+                <p>百度文心一言：https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat</p>
+                <p>讯飞星火：https://spark-api.xf-yun.com/v3.1/chat</p>
+                <p>MiniMax：https://api.minimax.chat/v1</p>
+                <p>月之暗面：https://api.moonshot.cn/v1</p>
+                <p>360智脑：https://api.360.cn/v1</p>
+                <p>Claude (Anthropic)：https://api.anthropic.com/v1</p>
+                <p>Gemini (Google)：https://generativelanguage.googleapis.com/v1beta</p>
               </el-collapse-item>
               <el-collapse-item title="更新日志" name="4" class="custom-collapse-item update-log-item">
+                <p><strong>V1.0.7 (2025-09-02)</strong></p>
+                <ul>
+                  <li>新增支持Claude (Anthropic)、Gemini (Google)等全球顶级AI模型</li>
+                  <li>优化AI模型配置界面，支持12种主流AI模型</li>
+                  <li>完善模型URL接口地址说明文档</li>
+                </ul>
+                <p><strong>V1.0.6 (2025-09-02)</strong></p>
+                <ul>
+                  <li>新增支持OpenAI、百度文心一言、讯飞星火、MiniMax、月之暗面、360智脑等AI模型</li>
+                  <li>优化AI模型配置界面，支持10种主流AI模型</li>
+                  <li>完善模型URL接口地址说明文档</li>
+                </ul>
                 <p><strong>V1.0.5 (2025-09-02)</strong></p>
                 <ul>
                   <li>完成AI配置服务层</li>

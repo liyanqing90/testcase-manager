@@ -304,10 +304,22 @@ Frontend application will start at `http://localhost:5173`
 
 ### AI Model Configuration
 1. **Access Configuration Page**: Configure AI model parameters in the system settings page
-2. **Select Model Type**: Supports multiple AI models including Tongyi Qianwen, Volcengine, and others
+2. **Select Model Type**: Supports multiple mainstream AI models:
+   - **Tongyi Qianwen** (Alibaba Cloud) - Recommended to use qwen-turbo or qwen-plus
+   - **ByteDance (Volcengine)** - Supports skylark-chat-pro and other models
+   - **DeepSeek** - Supports deepseek-chat and other models
+   - **Zhipu AI** - Supports glm-4, glm-3-turbo and other models
+   - **OpenAI** - Supports GPT-4, GPT-3.5-turbo and other models
+   - **Baidu ERNIE Bot** - Supports ERNIE-Bot-4, ERNIE-Bot-turbo and other models
+   - **Xunfei Spark** - Supports SparkDesk and other models
+   - **MiniMax** - Supports abab5.5-chat and other models
+   - **Moonshot** - Supports moonshot-v1-8k and other models
+   - **360 AI** - Supports 360GPT-S2 and other models
+   - **Claude (Anthropic)** - Supports Claude-3.5-Sonnet, Claude-3-Opus and other models
+   - **Gemini (Google)** - Supports gemini-pro, gemini-pro-vision and other models
 3. **Configure Parameters**: 
    - API Key: Enter the API key for the corresponding AI service provider
-   - Model URL: Configure the model interface address
+   - Model URL: Configure the model interface address (system provides default addresses)
    - Model Version: Select the specific model version
    - Price Settings: Configure input and output token prices
 4. **Save Configuration**: Click the "Save Configuration" button to complete the setup
