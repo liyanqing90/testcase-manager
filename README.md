@@ -63,6 +63,7 @@ A modern test case management system built with Flask and Vue 3, supporting Exce
 - Node.js 20.19+ or 22.12+
 - MySQL 5.7 or higher
 - Git
+- **Supported Operating Systems**: Windows, macOS, Linux
 
 ### Python Dependencies
 The project uses the following key Python packages:

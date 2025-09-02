@@ -61,6 +61,7 @@
 - Node.js 20.19+ 或 22.12+
 - MySQL 5.7 或更高版本
 - Git
+- **支持的操作系统**: Windows、macOS、Linux
 
 ### Python依赖
 项目使用以下关键Python包：
