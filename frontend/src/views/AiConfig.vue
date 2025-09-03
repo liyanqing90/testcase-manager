@@ -136,6 +136,12 @@
                 <p>Gemini (Google)：https://generativelanguage.googleapis.com/v1beta</p>
               </el-collapse-item>
               <el-collapse-item title="更新日志" name="4" class="custom-collapse-item update-log-item">
+                <p><strong>V1.0.8 (2025-09-02)</strong></p>
+                <ul>
+                  <li>优化AI生成用例系统，支持Windows、macOS、Linux跨平台运行</li>
+                  <li>改进subprocess命令执行机制，提升跨平台兼容性</li>
+                  <li>增强错误处理和调试信息，便于问题诊断</li>
+                </ul>
                 <p><strong>V1.0.7 (2025-09-02)</strong></p>
                 <ul>
                   <li>新增支持Claude (Anthropic)、Gemini (Google)等全球顶级AI模型</li>

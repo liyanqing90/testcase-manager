@@ -108,17 +108,59 @@ def generate_test_cases():
         doc_path_abs = os.path.abspath(doc_path)
         output_path_abs = os.path.abspath(output_path)
 
-        cmd = f'"{python_executable}" "{ai_main_path_abs}" -d "{doc_path_abs}" -t {test_type} -o "{output_path_abs}" -c {concurrency}'
+        # 验证所有路径
+        if not os.path.exists(python_executable):
+            return jsonify({'error': f'Python解释器不存在: {python_executable}'}), 500
+        
+        if not os.path.exists(ai_main_path_abs):
+            return jsonify({'error': f'AI主程序不存在: {ai_main_path_abs}'}), 500
+        
+        if not os.path.exists(doc_path_abs):
+            return jsonify({'error': f'文档文件不存在: {doc_path_abs}'}), 500
+
+        # 确保输出目录存在
+        output_dir = os.path.dirname(output_path_abs)
+        os.makedirs(output_dir, exist_ok=True)
+
+        # 构建跨平台兼容的命令参数列表
+        cmd_args = [
+            python_executable,
+            ai_main_path_abs,
+            '-d', doc_path_abs,
+            '-t', test_type,
+            '-o', output_path_abs,
+            '-c', str(concurrency)
+        ]
+
+        # 添加调试日志
+        print(f"执行AI生成系统命令:")
+        print(f"Python解释器: {python_executable}")
+        print(f"AI主程序: {ai_main_path_abs}")
+        print(f"文档路径: {doc_path_abs}")
+        print(f"输出路径: {output_path_abs}")
+        print(f"测试类型: {test_type}")
+        print(f"并发数: {concurrency}")
+        print(f"工作目录: {os.path.dirname(UPLOAD_FOLDER)}")
+        print(f"完整命令: {' '.join(cmd_args)}")
 
         # 执行AI生成系统
         try:
+            # 检查AI主程序文件是否存在和可执行
+            if not os.path.exists(ai_main_path_abs):
+                return jsonify({'error': f'AI主程序文件不存在: {ai_main_path_abs}'}), 500
+            
+            # 在Unix系统上检查文件权限
+            if os.name != 'nt':  # 不是Windows系统
+                if not os.access(ai_main_path_abs, os.R_OK):
+                    return jsonify({'error': f'AI主程序文件无读取权限: {ai_main_path_abs}'}), 500
+
             result = subprocess.run(
-                cmd,
+                cmd_args,
                 capture_output=True,
                 text=True,
                 encoding='utf-8',  # 明确指定UTF-8编码
                 errors='replace',  # 遇到无法解码的字符时替换为占位符
-                shell=True,  # 使用shell运行命令
+                shell=False,  # 不使用shell，直接传递参数列表
                 cwd=os.path.dirname(UPLOAD_FOLDER),  # 设置工作目录
                 timeout=1800  # 30分钟超时，因为AI系统需要很长时间处理多层过滤
             )
@@ -144,13 +186,20 @@ def generate_test_cases():
                     'success': False,
                     'error': '测试用例生成失败',
                     'stdout': result.stdout,
-                    'stderr': result.stderr
+                    'stderr': result.stderr,
+                    'returncode': result.returncode,
+                    'platform': os.name,
+                    'command': ' '.join(cmd_args)
                 }), 500
 
         except subprocess.TimeoutExpired:
             return jsonify({'error': '生成超时（30分钟），AI系统需要更长时间处理复杂的多层过滤逻辑，请稍后重试'}), 408
+        except FileNotFoundError as e:
+            return jsonify({'error': f'文件未找到: {str(e)}', 'platform': os.name, 'command': ' '.join(cmd_args)}), 500
+        except PermissionError as e:
+            return jsonify({'error': f'权限错误: {str(e)}', 'platform': os.name, 'command': ' '.join(cmd_args)}), 500
         except Exception as e:
-            return jsonify({'error': f'执行失败: {str(e)}'}), 500
+            return jsonify({'error': f'执行失败: {str(e)}', 'platform': os.name, 'command': ' '.join(cmd_args)}), 500
 
     except Exception as e:
         return jsonify({'error': f'生成失败: {str(e)}'}), 500
