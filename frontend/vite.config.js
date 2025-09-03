@@ -43,35 +43,35 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0',  // 允许局域网访问
-    port: 5173,        // 指定端口
+    port: 3000,        // 指定端口
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         timeout: 30000
       },
       '/upload_case': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         timeout: 1800000  // 30分钟超时
       },
       '/import_case': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         timeout: 1800000
       },
       '/project': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         timeout: 1800000
       },
       '/test_case': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         timeout: 1800000
       },
       '/ai_generate': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         timeout: 1800000,  // 30分钟超时，匹配后端超时设置
         proxyTimeout: 1800000,  // 代理超时时间
@@ -116,7 +116,7 @@ export default defineConfig({
         }
       },
       '/logs': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
         timeout: 30000,  // 30秒超时
         proxyTimeout: 30000

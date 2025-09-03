@@ -1,127 +1,75 @@
 {
   "test_approach": {
     "methodology": [
-      "功能测试：验证所有功能需求是否按规格实现",
-      "安全测试：检查认证机制、加密算法和防护措施",
-      "性能测试：验证系统在高并发下的响应时间和稳定性",
-      "兼容性测试：确保跨浏览器和移动平台的兼容性",
-      "可用性测试：评估用户体验和界面友好度"
+      "功能测试",
+      "兼容性测试",
+      "可用性测试"
     ],
     "tools": [
-      "Postman/SoapUI - API测试",
-      "Selenium/Cypress - 自动化UI测试",
-      "OWASP ZAP - 安全扫描",
-      "JMeter/LoadRunner - 性能测试",
-      "BrowserStack/Sauce Labs - 跨平台测试"
+      "Jmeter",
+      "Fiddler"
     ],
     "frameworks": [
-      "JUnit/TestNG - 单元测试框架",
-      "Cucumber - BDD测试框架",
-      "Robot Framework - 自动化测试框架"
+      "Appium",
+      "Selenium"
     ]
   },
   "coverage_matrix": [
     {
-      "feature": "账号密码登录功能（手机号/邮箱/用户名格式验证，密码复杂度检查，加密传输）",
-      "test_type": "功能测试、安全测试"
+      "feature": "商城首页增加家家购车活动入口（权益入口包含特定业务类型、入口位置前端写死、有固定活动文案）",
+      "test_type": "功能测试"
     },
     {
-      "feature": "图形验证码功能（生成规则、有效期、防机器措施）",
-      "test_type": "功能测试、安全测试"
+      "feature": "点击活动入口跳转至家家购车后台页面",
+      "test_type": "功能测试"
     },
     {
-      "feature": "短信验证码功能（发送频率限制、有效期检查）",
-      "test_type": "功能测试、安全测试"
+      "feature": "数据统计（页面透传pvid + 平台客服电话等信息，包括多种事件的曝光和点击统计）",
+      "test_type": "功能测试"
     },
     {
-      "feature": "用户注册流程（唯一性检查、密码强度提示、防机器人措施）",
-      "test_type": "功能测试、安全测试"
+      "feature": "订单支付页及下钻页面点击【官方客服】icon可显示官方客服电话",
+      "test_type": "功能测试"
     },
     {
-      "feature": "密码重置流程（历史密码检查、通知机制、链接有效期）",
-      "test_type": "功能测试、安全测试"
+      "feature": "同车商城主页面一同上线（9月15日）",
+      "test_type": "功能测试"
     },
     {
-      "feature": "HTTPS传输安全",
-      "test_type": "安全测试"
+      "feature": "活动入口权益类型判断逻辑可能出错（如误将二手车相关情况展示活动）",
+      "test_type": "功能测试"
     },
     {
-      "feature": "密码存储安全（bcrypt/PBKDF2算法）",
-      "test_type": "安全测试"
+      "feature": "页面跳转链接可能失效",
+      "test_type": "功能测试"
     },
     {
-      "feature": "登录响应时间<1秒",
-      "test_type": "性能测试"
-    },
-    {
-      "feature": "支持1000并发登录请求",
-      "test_type": "性能测试"
-    },
-    {
-      "feature": "主流浏览器和移动端兼容性",
-      "test_type": "兼容性测试"
-    },
-    {
-      "feature": "TS001测试场景（待补充具体内容）",
-      "test_type": "场景测试"
-    },
-    {
-      "feature": "账号锁定机制风险",
-      "test_type": "边界值测试"
-    },
-    {
-      "feature": "验证码系统破解风险",
-      "test_type": "安全渗透测试"
-    },
-    {
-      "feature": "密码重置安全漏洞",
-      "test_type": "安全审计测试"
-    },
-    {
-      "feature": "高并发性能瓶颈",
-      "test_type": "压力测试"
-    },
-    {
-      "feature": "多平台兼容性问题",
-      "test_type": "跨平台测试"
+      "feature": "数据统计参数透传可能丢失或错误",
+      "test_type": "功能测试"
     }
   ],
   "priorities": [
     {
       "level": "P0",
-      "description": "账号密码登录核心功能、HTTPS传输安全、密码存储安全、1000并发支持"
+      "description": "商城首页增加家家购车活动入口（权益入口包含特定业务类型、入口位置前端写死、有固定活动文案）、点击活动入口跳转至家家购车后台页面、数据统计（页面透传pvid + 平台客服电话等信息，包括多种事件的曝光和点击统计）、订单支付页及下钻页面点击【官方客服】icon可显示官方客服电话、活动入口权益类型判断逻辑可能出错（如误将二手车相关情况展示活动）、页面跳转链接可能失效、数据统计参数透传可能丢失或错误"
     },
     {
       "level": "P1",
-      "description": "验证码系统功能、用户注册流程、密码重置流程、登录响应时间"
-    },
-    {
-      "level": "P2",
-      "description": "图形验证码防破解措施、密码强度提示"
-    },
-    {
-      "level": "P3",
-      "description": "用户协议确认流程、错误提示模糊处理"
-    },
-    {
-      "level": "P4",
-      "description": "国际化支持（多语言/时区）"
+      "description": "同车商城主页面一同上线（9月15日）"
     }
   ],
   "resource_estimation": {
-    "time": "3-4周（包括测试设计、执行和报告）",
-    "personnel": "2名功能测试工程师、1名安全测试专家、1名性能测试工程师",
+    "time": "预计 5 个工作日",
+    "personnel": "2 名测试工程师",
     "tools": [
-      "Postman Pro",
-      "Selenium Grid",
-      "OWASP ZAP",
-      "JMeter",
-      "BrowserStack企业版"
+      "Jmeter",
+      "Fiddler",
+      "Appium",
+      "Selenium"
     ],
     "additional_resources": [
-      "测试手机号池（用于短信验证码测试）",
-      "多平台真机测试设备",
-      "负载生成服务器"
+      "测试设备（不同浏览器、不同终端）",
+      "测试账号（用于模拟不同用户场景）"
     ]
   }
 }

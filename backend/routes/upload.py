@@ -100,17 +100,16 @@ def upload_case():
             case['duplicate_reason'] = ''
     
     # 同时查询数据库中的重复项（全局唯一性检查）
-    import sys
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from backend.app import mysql
-    cur = mysql.connection.cursor()
+    from backend.models.db import execute_query
     case_ids = [c.get('ID') for c in cases if c.get('ID')]
     if case_ids:
         format_strings = ','.join(['%s'] * len(case_ids))
         # 修改查询逻辑，只检查当前项目中的重复用例，而不是整个数据库
-        cur.execute(f"SELECT case_id FROM test_cases WHERE case_id IN ({format_strings}) AND project_id = %s", 
-                   tuple(case_ids + [project_id]))
-        existing = set(row['case_id'] for row in cur.fetchall())
+        existing_cases = execute_query(
+            f"SELECT case_id FROM test_cases WHERE case_id IN ({format_strings}) AND project_id = %s", 
+            tuple(case_ids + [project_id])
+        )
+        existing = set(row['case_id'] for row in existing_cases)
         # 更新重复标记，添加数据库重复的信息
         for case in cases:
             if case.get('ID') in existing and not case['duplicate']:
@@ -126,11 +125,7 @@ def import_case():
     data = request.json
     cases = data.get('cases', [])
     project_id = data.get('project_id')  # 获取项目ID
-    # 延迟导入app模块并获取mysql实例
-    import sys
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from backend.app import mysql
-    cur = mysql.connection.cursor()
+    from backend.models.db import execute_query
     imported = []
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
@@ -161,7 +156,7 @@ def import_case():
         
         try:
             # 插入测试用例
-            cur.execute(
+            execute_query(
                 """
                 INSERT INTO test_cases
                 (case_id, title, description, preconditions, steps, expected_results, priority, category, status, created_at, updated_at, created_by, last_updated_by, project_id)
@@ -182,21 +177,28 @@ def import_case():
                     created_by,  # 使用处理后的created_by值
                     c.get('Last Updated By') or "",
                     project_id  # 添加项目ID
+                ),
+                fetch=False
+            )
+            
+            # 获取刚插入的记录ID - 通过查询最新插入的记录
+            latest_record = execute_query(
+                "SELECT id FROM test_cases WHERE case_id = %s AND project_id = %s ORDER BY id DESC LIMIT 1",
+                (case_id, project_id)
+            )
+            
+            if latest_record:
+                test_case_id = latest_record[0]['id']
+                
+                # 同时在project_cases表中创建关联记录
+                execute_query(
+                    "INSERT INTO project_cases (project_id, test_case_id) VALUES (%s, %s)",
+                    (project_id, test_case_id),
+                    fetch=False
                 )
-            )
-            
-            # 获取插入的测试用例ID
-            test_case_id = cur.lastrowid
-            
-            # 同时在project_cases表中创建关联记录
-            cur.execute(
-                "INSERT INTO project_cases (project_id, test_case_id) VALUES (%s, %s)",
-                (project_id, test_case_id)
-            )
             
             imported.append(case_id)
         except Exception as e:
-            mysql.connection.rollback()
             error_msg = str(e)
             
             # 检查是否是重复键错误
@@ -219,5 +221,5 @@ def import_case():
                     }), 400
             else:
                 return jsonify({'error': error_msg, 'failed_case': case_id}), 400
-    mysql.connection.commit()
+    
     return jsonify({'imported': imported, 'count': len(imported)})

@@ -128,10 +128,14 @@ class AIConfigService:
         
         if model_type == 'volcengine':
             # 字节跳动（火山引擎）配置
+            # AutoGen会自动在base_url后面添加/chat/completions，所以我们需要提供根URL
+            base_url = config['base_url']
+            if base_url.endswith('/chat/completions'):
+                base_url = base_url.replace('/chat/completions', '')
             return {
                 "model": config['model_version'],
                 "api_key": config['api_key'],
-                "base_url": config['base_url'],
+                "base_url": base_url,
                 "price": [config['prompt_price'], config['completion_price']]
             }
         elif model_type == 'deepseek':
@@ -216,10 +220,14 @@ class AIConfigService:
             }
         else:
             # 通义千问等默认配置
+            # AutoGen会自动在base_url后面添加/chat/completions，所以我们需要提供根URL
+            base_url = config['base_url']
+            if base_url.endswith('/chat/completions'):
+                base_url = base_url.replace('/chat/completions', '')
             return {
                 "model": config['model_version'],
                 "api_key": config['api_key'],
-                "base_url": config['base_url'],
+                "base_url": base_url,
                 "price": [config['prompt_price'], config['completion_price']]
             }
     

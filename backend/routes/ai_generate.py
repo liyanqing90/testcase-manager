@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import shutil
-from backend.app import mysql
+from backend.models.db import execute_query
 
 # 添加AI测试系统路径
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ai_test_cases', 'src'))
@@ -396,24 +396,20 @@ def get_generated_file_summary():
 
         # 保存汇总数据到数据库（防重复插入）
         try:
-            cur = mysql.connection.cursor()
-
             # 先检查是否已存在相同文件名的记录
-            cur.execute("""
+            existing_record = execute_query("""
                 SELECT id FROM ai_test_generation_history 
                 WHERE filename = %s
                 LIMIT 1
             """, (filename,))
 
-            existing_record = cur.fetchone()
-
             if existing_record:
                 # 如果已存在，则更新现有记录
-                cur.execute("""
+                execute_query("""
                     UPDATE ai_test_generation_history 
                     SET case_types = %s, priority_distribution = %s, total_cases = %s,
                         functional_test_count = %s, api_test_count = %s, ui_auto_test_count = %s,
-                        estimated_file_size = %s, generated_at = %s, updated_at = CURRENT_TIMESTAMP
+                        estimated_file_size = %s, generated_at = %s
                     WHERE filename = %s
                 """, (
                     json.dumps(db_case_types),
@@ -425,11 +421,11 @@ def get_generated_file_summary():
                     file_stat.st_size,
                     datetime.now(),
                     filename
-                ))
+                ), fetch=False)
                 print(f"更新现有记录: {filename}")
             else:
                 # 如果不存在，则插入新记录
-                cur.execute("""
+                execute_query("""
                     INSERT INTO ai_test_generation_history 
                     (case_types, priority_distribution, total_cases, functional_test_count, 
                      api_test_count, ui_auto_test_count, estimated_file_size, generated_at, filename)
@@ -444,11 +440,9 @@ def get_generated_file_summary():
                     file_stat.st_size,
                     datetime.now(),
                     filename
-                ))
+                ), fetch=False)
                 print(f"插入新记录: {filename}")
 
-            mysql.connection.commit()
-            cur.close()
         except Exception as db_error:
             print(f"保存汇总数据到数据库失败: {str(db_error)}")
 
@@ -464,8 +458,7 @@ def get_generated_file_summary():
 def get_latest_generation_summary():
     """获取最新一次AI生成用例的汇总信息"""
     try:
-        cur = mysql.connection.cursor()
-        cur.execute("""
+        result = execute_query("""
             SELECT case_types, priority_distribution, total_cases, 
                    functional_test_count, api_test_count, ui_auto_test_count,
                    estimated_file_size, generated_at, filename
@@ -473,8 +466,6 @@ def get_latest_generation_summary():
             ORDER BY generated_at DESC 
             LIMIT 1
         """)
-        result = cur.fetchone()
-        cur.close()
 
         if not result:
             return jsonify({
@@ -482,21 +473,24 @@ def get_latest_generation_summary():
                 'summary': None
             })
 
+        # 获取第一条记录
+        record = result[0]
+
         # 解析JSON字段
-        case_types = json.loads(result['case_types']) if result['case_types'] else {}
-        priority_distribution = json.loads(result['priority_distribution']) if result['priority_distribution'] else {}
+        case_types = json.loads(record['case_types']) if record['case_types'] else {}
+        priority_distribution = json.loads(record['priority_distribution']) if record['priority_distribution'] else {}
 
         summary_data = {
-            'total_cases': result['total_cases'],
+            'total_cases': record['total_cases'],
             'priority_counts': priority_distribution,
             'category_counts': case_types,
-            'functional_test_count': result['functional_test_count'],  # 添加真正的功能测试用例数
-            'api_test_count': result['api_test_count'],  # 添加真正的接口测试用例数
-            'ui_auto_test_count': result['ui_auto_test_count'],  # 添加真正的UI自动化测试用例数
-            'file_size': result['estimated_file_size'],
-            'created_at': result['generated_at'].isoformat() if result['generated_at'] else None,
-            'modified_at': result['generated_at'].isoformat() if result['generated_at'] else None,
-            'filename': result['filename']
+            'functional_test_count': record['functional_test_count'],  # 添加真正的功能测试用例数
+            'api_test_count': record['api_test_count'],  # 添加真正的接口测试用例数
+            'ui_auto_test_count': record['ui_auto_test_count'],  # 添加真正的UI自动化测试用例数
+            'file_size': record['estimated_file_size'],
+            'created_at': record['generated_at'].isoformat() if record['generated_at'] else None,
+            'modified_at': record['generated_at'].isoformat() if record['generated_at'] else None,
+            'filename': record['filename']
         }
 
         return jsonify({

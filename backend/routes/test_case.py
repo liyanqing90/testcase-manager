@@ -1,8 +1,5 @@
 from flask import Blueprint, request, jsonify
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from backend.app import mysql
+from backend.models.db import execute_query
 from datetime import datetime
 
 test_case_bp = Blueprint('test_case', __name__)
@@ -22,19 +19,14 @@ def check_case_id_duplicate():
         if not project_id or not case_id:
             return jsonify({'error': '项目ID和用例ID不能为空'}), 400
         
-        cur = mysql.connection.cursor()
-        
         # 查询指定项目下是否存在该case_id
-        cur.execute("""
+        result = execute_query("""
             SELECT id 
             FROM test_cases 
             WHERE project_id = %s AND case_id = %s
         """, (project_id, case_id))
         
-        result = cur.fetchone()
-        cur.close()
-        
-        is_duplicate = result is not None
+        is_duplicate = len(result) > 0
         
         return jsonify({
             'is_duplicate': is_duplicate,
@@ -61,19 +53,17 @@ def update_test_case_status(test_case_id):
         if received_status not in valid_statuses:
             return jsonify({'error': f'无效的状态值: {status}, 有效值: {valid_statuses}'}), 400
         
-        cur = mysql.connection.cursor()
-        
         # 更新测试用例状态 - 确保状态值统一为小写
-        cur.execute(
+        execute_query(
             "UPDATE test_cases SET status = %s, updated_at = %s, last_updated_by = %s WHERE id = %s",
-            (received_status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '用户', test_case_id)
+            (received_status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '用户', test_case_id),
+            fetch=False
         )
         
-        mysql.connection.commit()
-        affected_rows = cur.rowcount
-        cur.close()
+        # 检查是否更新成功 - 查询该用例是否存在
+        check_result = execute_query("SELECT id FROM test_cases WHERE id = %s", (test_case_id,))
         
-        if affected_rows == 0:
+        if len(check_result) == 0:
             return jsonify({'error': '测试用例不存在'}), 404
         
         return jsonify({
@@ -89,19 +79,17 @@ def update_test_case_status(test_case_id):
 def delete_test_case(test_case_id):
     """删除测试用例"""
     try:
-        cur = mysql.connection.cursor()
-        
         # 1. 先查询测试用例信息，获取project_id
-        cur.execute("""
+        test_case_result = execute_query("""
             SELECT id, case_id, project_id, title 
             FROM test_cases 
             WHERE id = %s
         """, (test_case_id,))
         
-        test_case = cur.fetchone()
-        if not test_case:
-            cur.close()
+        if not test_case_result:
             return jsonify({'error': '测试用例不存在'}), 404
+        
+        test_case = test_case_result[0]
         
         # 正确访问查询结果字段（字典格式）
         case_id = test_case['case_id']
@@ -110,28 +98,19 @@ def delete_test_case(test_case_id):
         
         # 检查project_id是否为空
         if project_id is None:
-            cur.close()
             return jsonify({'error': '测试用例缺少项目ID信息'}), 400
         
         # 2. 删除project_cases表中的关联记录
-        cur.execute("""
+        execute_query("""
             DELETE FROM project_cases 
             WHERE project_id = %s AND test_case_id = %s
-        """, (project_id, test_case_id))
-        
-        project_cases_deleted = cur.rowcount
+        """, (project_id, test_case_id), fetch=False)
         
         # 3. 删除test_cases表中的测试用例记录
-        cur.execute("""
+        execute_query("""
             DELETE FROM test_cases 
             WHERE id = %s
-        """, (test_case_id,))
-        
-        test_cases_deleted = cur.rowcount
-        
-        # 提交事务
-        mysql.connection.commit()
-        cur.close()
+        """, (test_case_id,), fetch=False)
         
         return jsonify({
             'message': '测试用例删除成功',
@@ -143,11 +122,7 @@ def delete_test_case(test_case_id):
         })
         
     except Exception as e:
-        # 回滚事务
-        try:
-            mysql.connection.rollback()
-        except:
-            pass
+        # 数据库操作已经使用execute_query，不需要手动回滚
         
         # 返回错误信息
         error_msg = str(e)
@@ -185,23 +160,20 @@ def update_test_case(test_case_id):
         # if data['category'] not in valid_categories:
         #     return jsonify({'error': f'无效的分类值: {data["category"]}, 有效值: {valid_categories}'}), 400
         
-        cur = mysql.connection.cursor()
-        
         # 检查同一项目内case_id是否重复（排除当前用例）
-        cur.execute("""
+        duplicate_check = execute_query("""
             SELECT id FROM test_cases 
             WHERE project_id = %s AND case_id = %s AND id != %s
         """, (data['project_id'], data['case_id'], test_case_id))
         
-        if cur.fetchone():
-            cur.close()
+        if duplicate_check:
             return jsonify({'error': f'用例ID "{data["case_id"]}" 在当前项目中已存在'}), 400
         
         # 获取当前时间
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         # 更新测试用例 - 确保状态值统一为小写
-        cur.execute("""
+        execute_query("""
             UPDATE test_cases SET 
                 case_id = %s, title = %s, description = %s, preconditions = %s,
                 steps = %s, expected_results = %s, priority = %s, category = %s,
@@ -220,13 +192,12 @@ def update_test_case(test_case_id):
             current_time,
             '用户',  # last_updated_by
             test_case_id
-        ))
+        ), fetch=False)
         
-        mysql.connection.commit()
-        affected_rows = cur.rowcount
-        cur.close()
+        # 检查是否更新成功 - 查询该用例是否存在
+        check_result = execute_query("SELECT id FROM test_cases WHERE id = %s", (test_case_id,))
         
-        if affected_rows == 0:
+        if len(check_result) == 0:
             return jsonify({'error': '测试用例不存在'}), 404
         
         return jsonify({

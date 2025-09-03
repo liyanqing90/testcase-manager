@@ -37,7 +37,6 @@ flake8>=6.1.0
 # case manager
 flask
 flask-cors
-flask-mysqldb
 werkzeug
 
 # Additional dependencies found in code

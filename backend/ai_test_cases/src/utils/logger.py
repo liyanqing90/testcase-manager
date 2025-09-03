@@ -20,11 +20,12 @@ def setup_logger(log_level: str = "INFO", log_file: str = "ai_tester.log"):
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-    # Configure file handler with rotation
+    # Configure file handler with rotation and UTF-8 encoding
     file_handler = RotatingFileHandler(
         log_path,
         maxBytes=10*1024*1024,  # 10MB
-        backupCount=5
+        backupCount=5,
+        encoding='utf-8'  # 明确指定UTF-8编码
     )
     file_handler.setFormatter(log_format)
 

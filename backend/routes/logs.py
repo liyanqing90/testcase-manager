@@ -80,14 +80,31 @@ def get_logs():
         start_time = request.args.get('start_time', '')
         end_time = request.args.get('end_time', '')
         
-        # 读取日志文件 - 尝试GBK编码，如果失败则使用UTF-8
-        try:
-            with open(LOG_FILE_PATH, 'r', encoding='gbk', errors='ignore') as f:
-                lines = f.readlines()
-        except UnicodeDecodeError:
-            # 如果GBK解码失败，尝试UTF-8
-            with open(LOG_FILE_PATH, 'r', encoding='utf-8', errors='ignore') as f:
-                lines = f.readlines()
+        # 读取日志文件 - 优先使用UTF-8编码，兼容其他编码
+        lines = []
+        encodings_to_try = ['utf-8', 'gbk', 'gb2312', 'latin-1']
+        
+        for encoding in encodings_to_try:
+            try:
+                with open(LOG_FILE_PATH, 'r', encoding=encoding, errors='ignore') as f:
+                    lines = f.readlines()
+                    break  # 成功读取就退出循环
+            except (UnicodeDecodeError, LookupError):
+                continue
+        
+        # 如果所有编码都失败，使用二进制模式读取并尝试解码
+        if not lines:
+            try:
+                with open(LOG_FILE_PATH, 'rb') as f:
+                    content = f.read()
+                    # 尝试UTF-8解码，失败则使用latin-1（不会抛出异常）
+                    try:
+                        text = content.decode('utf-8')
+                    except UnicodeDecodeError:
+                        text = content.decode('latin-1')
+                    lines = text.splitlines(True)
+            except Exception:
+                lines = []
         
         # 解析日志行
         logs = []
@@ -167,12 +184,33 @@ def stream_logs():
                     if current_size > last_position:
                         # 文件有新内容，读取新增部分
                         print(f"检测到文件变化: {current_size} > {last_position}, 新增 {current_size - last_position} 字节")
+                        
+                        # 使用二进制模式读取新增内容，避免编码问题
                         try:
-                            with open(LOG_FILE_PATH, 'r', encoding='gbk', errors='ignore') as f:
+                            with open(LOG_FILE_PATH, 'rb') as f:
                                 f.seek(last_position)
-                                new_lines = f.readlines()
+                                new_content = f.read()
                                 
-                                print(f"GBK编码读取到 {len(new_lines)} 行新内容")
+                                # 尝试多种编码解码
+                                encodings_to_try = ['utf-8', 'gbk', 'gb2312', 'latin-1']
+                                decoded_text = None
+                                
+                                for encoding in encodings_to_try:
+                                    try:
+                                        decoded_text = new_content.decode(encoding)
+                                        print(f"使用 {encoding} 编码成功读取到新内容")
+                                        break
+                                    except (UnicodeDecodeError, LookupError):
+                                        continue
+                                
+                                # 如果所有编码都失败，使用latin-1（不会失败）
+                                if decoded_text is None:
+                                    decoded_text = new_content.decode('latin-1')
+                                    print("使用 latin-1 编码作为备用方案")
+                                
+                                new_lines = decoded_text.splitlines(True)
+                                print(f"成功读取到 {len(new_lines)} 行新内容")
+                                
                                 # 处理新读取的行
                                 for line in new_lines:
                                     if line.strip():
@@ -181,21 +219,9 @@ def stream_logs():
                                             print(f"发送日志: {log_entry['timestamp']} [{log_entry['level']}] {log_entry['message'][:50]}...")
                                             yield f"data: {json.dumps(log_entry, ensure_ascii=False)}\n\n"
                                             
-                        except UnicodeDecodeError:
-                            print("GBK解码失败，尝试UTF-8编码")
-                            # 如果GBK解码失败，尝试UTF-8
-                            with open(LOG_FILE_PATH, 'r', encoding='utf-8', errors='ignore') as f:
-                                f.seek(last_position)
-                                new_lines = f.readlines()
-                                
-                                print(f"UTF-8编码读取到 {len(new_lines)} 行新内容")
-                                # 处理新读取的行
-                                for line in new_lines:
-                                    if line.strip():
-                                        log_entry = parse_log_line(line)
-                                        if log_entry:
-                                            print(f"发送日志: {log_entry['timestamp']} [{log_entry['level']}] {log_entry['message'][:50]}...")
-                                            yield f"data: {json.dumps(log_entry, ensure_ascii=False)}\n\n"
+                        except Exception as e:
+                            print(f"读取日志文件时发生错误: {e}")
+                            yield f"data: {json.dumps({'error': f'读取日志失败: {str(e)}'})}\n\n"
                         
                         last_position = current_size
                     
@@ -229,8 +255,8 @@ def clear_logs():
                 'error': '日志文件不存在'
             }), 404
         
-        # 清空文件内容 - 保持原有编码
-        with open(LOG_FILE_PATH, 'w', encoding='gbk') as f:
+        # 清空文件内容 - 使用UTF-8编码
+        with open(LOG_FILE_PATH, 'w', encoding='utf-8') as f:
             f.write('')
         
         return jsonify({
