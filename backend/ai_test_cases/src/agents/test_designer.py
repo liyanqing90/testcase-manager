@@ -22,6 +22,11 @@ class TestDesignerAgent:
             
         self.config_list = [ai_config]
         
+        # 记录使用的AI模型信息
+        model_info = ai_config.get('model', 'unknown')
+        base_url = ai_config.get('base_url', 'unknown')
+        logger.info(f"测试设计师初始化 - 使用模型: {model_info}, 接口地址: {base_url}")
+        
         # 初始化AgentIO用于保存和加载设计结果
         self.agent_io = AgentIO()
         

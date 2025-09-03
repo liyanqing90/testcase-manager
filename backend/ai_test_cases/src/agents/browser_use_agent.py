@@ -7,6 +7,9 @@ import os
 import logging
 import json
 
+# 设置日志记录器
+logger = logging.getLogger(__name__)
+
 
 # 设置控制台编码为 UTF-8
 if sys.platform == 'win32':
@@ -52,6 +55,9 @@ if not ai_config:
 base_url = ai_config['base_url']
 api_key = ai_config['api_key']
 model_v3 = ai_config['model']
+
+# 记录使用的AI模型信息
+logger.info(f"浏览器代理初始化 - 使用模型: {model_v3}, 接口地址: {base_url}")
 
 # 设置环境变量
 os.environ['OPENAI_API_KEY'] = api_key

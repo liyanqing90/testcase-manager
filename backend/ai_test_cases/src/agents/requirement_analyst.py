@@ -24,6 +24,11 @@ class RequirementAnalystAgent:
             raise ValueError("无法从数据库获取AI配置，请检查数据库连接和配置")
             
         self.config_list = [ai_config]
+        
+        # 记录使用的AI模型信息
+        model_info = ai_config.get('model', 'unknown')
+        base_url = ai_config.get('base_url', 'unknown')
+        logger.info(f"需求分析师初始化 - 使用模型: {model_info}, 接口地址: {base_url}")
 
         # 初始化AgentIO用于保存和加载分析结果
         self.agent_io = AgentIO()

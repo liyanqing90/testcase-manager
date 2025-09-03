@@ -30,6 +30,12 @@ logger = logging.getLogger(__name__)
 class AITestingSystem:
     def __init__(self, concurrent_workers: int = 1): 
         setup_logger()
+        
+        # 记录系统初始化信息
+        logger.info("=" * 60)
+        logger.info("AI测试用例生成系统初始化")
+        logger.info("=" * 60)
+        
         # Initialize services
         self.doc_processor = DocumentProcessor()
         self.test_generator = TestCaseGenerator()
@@ -37,6 +43,7 @@ class AITestingSystem:
         self.ui_auto_service = UIAutoService()
         
         # Initialize agents
+        logger.info("正在初始化AI代理...")
         self.requirement_analyst = RequirementAnalystAgent()
         self.test_designer = TestDesignerAgent()
         self.test_case_writer = TestCaseWriterAgent(concurrent_workers=concurrent_workers)
@@ -45,6 +52,9 @@ class AITestingSystem:
             [self.requirement_analyst, self.test_designer, 
              self.test_case_writer, self.quality_assurance]
         )
+        
+        logger.info("AI测试用例生成系统初始化完成")
+        logger.info("=" * 60)
 
     async def process_requirements(self,
                                  doc_path: str,

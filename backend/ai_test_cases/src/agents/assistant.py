@@ -25,6 +25,11 @@ class AssistantAgent:
             
         self.config_list = [ai_config]
         
+        # 记录使用的AI模型信息
+        model_info = ai_config.get('model', 'unknown')
+        base_url = ai_config.get('base_url', 'unknown')
+        logger.info(f"协调器代理初始化 - 使用模型: {model_info}, 接口地址: {base_url}")
+        
         self.agent = autogen.AssistantAgent(
             name="coordinator",
             system_message="""你是一位项目协调员，负责管理不同测试代理之间的交互，

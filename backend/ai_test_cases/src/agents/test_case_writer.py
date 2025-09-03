@@ -27,6 +27,11 @@ class TestCaseWriterAgent:
             
         self.config_list = [ai_config]
         
+        # 记录使用的AI模型信息
+        model_info = ai_config.get('model', 'unknown')
+        base_url = ai_config.get('base_url', 'unknown')
+        logger.info(f"测试用例编写器初始化 - 使用模型: {model_info}, 接口地址: {base_url}, 并发数: {concurrent_workers}")
+        
         # 初始化AgentIO用于保存和加载测试用例
         self.agent_io = AgentIO()
         
@@ -371,7 +376,8 @@ class TestCaseWriterAgent:
                 
                 # 验证和规范化测试用例
                 validated_test_cases = []
-                for test_case in json_data['test_cases']:
+                for i, test_case in enumerate(json_data['test_cases']):
+                    logger.info(f"验证第 {i+1} 个测试用例: {test_case.get('id', 'unknown')}")
                     # 确保所有必需字段都存在
                     if self._validate_test_case(test_case):
                         # 规范化优先级格式（确保是P0、P1等格式）
@@ -383,8 +389,9 @@ class TestCaseWriterAgent:
                             test_case['category'] = '功能测试'
                         
                         validated_test_cases.append(test_case)
+                        logger.info(f"第 {i+1} 个测试用例验证通过")
                     else:
-                        logger.warning(f"测试用例验证失败，跳过: {test_case.get('id', 'unknown')}")
+                        logger.warning(f"第 {i+1} 个测试用例验证失败，跳过: {test_case.get('id', 'unknown')}")
                 
                 # 如果验证后的测试用例为空，记录警告并返回空列表
                 if not validated_test_cases:
@@ -571,13 +578,14 @@ class TestCaseWriterAgent:
                 "id", "title", "description", "preconditions", "steps",
                 "expected_results", "priority", "category"
             ]
-            if not all(field in test_case for field in required_fields):
-                logger.warning(f"测试用例缺少必需字段: {[field for field in required_fields if field not in test_case]}")
+            missing_fields = [field for field in required_fields if field not in test_case]
+            if missing_fields:
+                logger.warning(f"测试用例缺少必需字段: {missing_fields}")
                 return False
             
             # 验证字段内容
             if not test_case["id"] or not test_case["title"]:
-                logger.warning(f"测试用例ID或标题为空: {test_case.get('id', 'unknown')}")
+                logger.warning(f"测试用例ID或标题为空: ID='{test_case.get('id', 'unknown')}', Title='{test_case.get('title', 'unknown')}'")
                 return False
             
             # 验证描述字段
@@ -587,7 +595,7 @@ class TestCaseWriterAgent:
             
             # 确保步骤和预期结果不为空
             if not test_case["steps"] or not test_case["expected_results"]:
-                logger.warning(f"测试用例步骤或预期结果为空: {test_case.get('id', 'unknown')}")
+                logger.warning(f"测试用例步骤或预期结果为空: {test_case.get('id', 'unknown')} - Steps: {test_case.get('steps', 'None')}, Expected: {test_case.get('expected_results', 'None')}")
                 return False
             
             # 验证优先级格式（如 P0, P1, P2）
@@ -603,19 +611,20 @@ class TestCaseWriterAgent:
             
             # 验证前置条件是否为列表
             if not isinstance(test_case["preconditions"], list):
-                logger.warning(f"测试用例前置条件不是列表: {test_case.get('id', 'unknown')}")
+                logger.warning(f"测试用例前置条件不是列表: {test_case.get('id', 'unknown')} - Type: {type(test_case['preconditions'])}")
                 test_case["preconditions"] = [test_case["preconditions"]] if test_case["preconditions"] else []
             
             # 验证步骤是否为列表
             if not isinstance(test_case["steps"], list):
-                logger.warning(f"测试用例步骤不是列表: {test_case.get('id', 'unknown')}")
+                logger.warning(f"测试用例步骤不是列表: {test_case.get('id', 'unknown')} - Type: {type(test_case['steps'])}")
                 test_case["steps"] = [test_case["steps"]] if test_case["steps"] else []
                 
             # 验证预期结果是否为列表
             if not isinstance(test_case["expected_results"], list):
-                logger.warning(f"测试用例预期结果不是列表: {test_case.get('id', 'unknown')}")
+                logger.warning(f"测试用例预期结果不是列表: {test_case.get('id', 'unknown')} - Type: {type(test_case['expected_results'])}")
                 test_case["expected_results"] = [test_case["expected_results"]] if test_case["expected_results"] else []
             
+            logger.info(f"测试用例验证通过: {test_case.get('id', 'unknown')}")
             return True
         except Exception as e:
             logger.error(f"验证测试用例错误: {str(e)}")

@@ -4,6 +4,8 @@
       <el-tab-pane label="模型配置">
         <div class="tab-content">
           <div class="config-container">
+            <div class="config-layout">
+              <div class="config-left">
         <el-form 
           :model="configForm" 
           :rules="configRules" 
@@ -13,6 +15,13 @@
         >
               <div class="form-section">
                 <h4>基础信息</h4>
+                    <el-form-item label="配置名称" prop="configName">
+                      <el-input 
+                        v-model="configForm.configName" 
+                        placeholder="请输入配置名称"
+                        class="config-input"
+                      />
+                    </el-form-item>
           <el-form-item label="模型类型" prop="modelType">
             <el-select 
               v-model="configForm.modelType" 
@@ -93,12 +102,80 @@
                 </div>
               </template>
               <template v-else>
-              保存配置
+                    <span>保存配置</span>
               </template>
             </el-button>
                 <el-button @click="resetConfig" :disabled="saving" class="reset-btn">重置</el-button>
           </el-form-item>
         </el-form>
+          </div>
+              <div class="config-right">
+                <div class="form-section">
+                  <h4>配置列表</h4>
+                  <div class="config-list">
+                    <div v-if="configList.length === 0" class="empty-list">
+                      <p>暂无配置</p>
+                    </div>
+                    <div v-else class="config-items">
+                      <div class="config-header">
+                        <div class="config-name">配置名称</div>
+                        <div class="config-info">
+                          <div class="model-type-container">
+                            <span>模型类型</span>
+                          </div>
+                          <div class="model-version">模型版本</div>
+                          <div class="config-time">更新时间</div>
+                          <div class="header-enabled">启用状态</div>
+                          <div class="config-actions">操作</div>
+                        </div>
+                      </div>
+                      <div 
+                        v-for="config in configList" 
+                        :key="config.id" 
+                        class="config-item"
+                      >
+                        <div class="config-name">{{ config.config_name }}</div>
+                        <div class="config-info">
+                          <div class="model-type-container">
+                            <span class="model-type" :style="{ 
+                              backgroundColor: getModelTypeInfo(config.model_type).bgColor, 
+                              color: getModelTypeInfo(config.model_type).color 
+                            }">
+                              {{ getModelTypeInfo(config.model_type).name }}
+                            </span>
+                          </div>
+                          <div class="model-version">{{ config.model_version }}</div>
+                          <div class="config-time">{{ formatTime(config.updated_at) }}</div>
+                          <div class="config-enabled">
+                            <el-switch 
+                              :model-value="Boolean(config.is_enabled)" 
+                              @update:model-value="(value) => toggleConfigEnabled(config, value)"
+                              size="small"
+                              class="animated-switch"
+                            />
+                          </div>
+                          <div class="config-actions">
+                            <el-button size="small" type="success" @click="viewConfig(config)" class="action-btn view-btn">查看</el-button>
+                            <el-button size="small" type="primary" @click="editConfig(config)" class="action-btn edit-btn">编辑</el-button>
+                            <el-popconfirm
+                              title="确定要删除这个配置吗？"
+                              confirm-button-text="确定"
+                              cancel-button-text="取消"
+                              placement="left-end"
+                              @confirm="deleteConfig(config)"
+                            >
+                              <template #reference>
+                                <el-button size="small" type="danger" class="action-btn delete-btn">删除</el-button>
+                              </template>
+                            </el-popconfirm>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </el-tab-pane>
@@ -136,6 +213,10 @@
                 <p>Gemini (Google)：https://generativelanguage.googleapis.com/v1beta</p>
               </el-collapse-item>
               <el-collapse-item title="更新日志" name="4" class="custom-collapse-item update-log-item">
+                <p><strong>V1.0.9 (2025-09-03)</strong></p>
+                <ul>
+                  <li>更新AI模型多配置</li>
+                </ul>
                 <p><strong>V1.0.8 (2025-09-02)</strong></p>
                 <ul>
                   <li>优化AI生成用例系统，支持Windows、macOS、Linux跨平台运行</li>
@@ -204,6 +285,81 @@
     </div>
       </el-tab-pane>
     </el-tabs>
+    
+    <!-- 查看配置详情对话框 -->
+    <el-dialog
+      v-model="viewDialogVisible"
+      width="600px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="true"
+    >
+      <div class="config-detail">
+        <div class="detail-section">
+          <h4>基础信息</h4>
+          <div class="detail-item">
+            <label>配置名称：</label>
+            <span>{{ viewConfigData.configName }}</span>
+          </div>
+          <div class="detail-item">
+            <label>模型类型：</label>
+            <span class="model-type-tag" :style="{ 
+              backgroundColor: getModelTypeInfo(viewConfigData.modelType).bgColor, 
+              color: getModelTypeInfo(viewConfigData.modelType).color 
+            }">
+              {{ getModelTypeInfo(viewConfigData.modelType).name }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>模型版本：</label>
+            <span>{{ viewConfigData.modelVersion }}</span>
+          </div>
+          <div class="detail-item">
+            <label>API密钥：</label>
+            <span class="api-key">{{ viewConfigData.apiKey }}</span>
+          </div>
+          <div class="detail-item">
+            <label>模型URL：</label>
+            <span class="url-text">{{ viewConfigData.baseUrl }}</span>
+          </div>
+        </div>
+        
+        <div class="detail-section">
+          <h4>价格配置</h4>
+          <div class="detail-item">
+            <label>输入价格：</label>
+            <span>{{ viewConfigData.promptPrice }} CNY / 1000 tokens</span>
+          </div>
+          <div class="detail-item">
+            <label>输出价格：</label>
+            <span>{{ viewConfigData.completionPrice }} CNY / 1000 tokens</span>
+          </div>
+        </div>
+        
+        <div class="detail-section">
+          <h4>状态信息</h4>
+          <div class="detail-item">
+            <label>启用状态：</label>
+            <el-tag :type="viewConfigData.isEnabled ? 'success' : 'info'">
+              {{ viewConfigData.isEnabled ? '启用' : '禁用' }}
+            </el-tag>
+          </div>
+          <div class="detail-item">
+            <label>创建时间：</label>
+            <span>{{ formatTime(viewConfigData.createdAt) }}</span>
+          </div>
+          <div class="detail-item">
+            <label>更新时间：</label>
+            <span>{{ formatTime(viewConfigData.updatedAt) }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="viewDialogVisible = false">关闭</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -215,8 +371,13 @@ import { Setting } from '@element-plus/icons-vue';
 // 响应式数据
 const configFormRef = ref();
 const saving = ref(false);
+const configList = ref([]);
+const viewDialogVisible = ref(false);
+const viewConfigData = ref({});
 
 const configForm = reactive({
+  configId: null,
+  configName: '',
   modelType: 'qwen',
   apiKey: '',
   baseUrl: '',
@@ -227,6 +388,9 @@ const configForm = reactive({
 
 // 表单验证规则
 const configRules = {
+  configName: [
+    { required: true, message: '请输入配置名称', trigger: 'blur' }
+  ],
   modelType: [
     { required: true, message: '请选择模型类型', trigger: 'change' }
   ],
@@ -249,30 +413,219 @@ const configRules = {
 
 // 页面加载时初始化
 onMounted(async () => {
-  // 加载已有的配置
-  await loadConfig();
+  // 初始化表单为空，只有模型类型默认为通义千问
+  resetFormToDefault();
+  // 加载配置列表
+  await loadConfigList();
 });
 
-// 加载配置
-const loadConfig = async () => {
+// 加载配置列表
+const loadConfigList = async () => {
   try {
-    const response = await fetch('/api/ai_config');
+    const response = await fetch('/api/ai_configs?include_sensitive=true');
     const result = await response.json();
     
-    if (result.success && result.data) {
-      // 填充表单数据
-      configForm.modelType = result.data.modelType || 'qwen';
-      configForm.apiKey = result.data.apiKey || '';
-      configForm.baseUrl = result.data.baseUrl || '';
-      configForm.modelVersion = result.data.modelVersion || '';
-      configForm.promptPrice = result.data.promptPrice || '0.001';
-      configForm.completionPrice = result.data.completionPrice || '0.002';
+    if (result.success) {
+      configList.value = result.data || [];
+    } else {
+      console.error('加载配置列表失败:', result.message);
     }
   } catch (error) {
-    console.error('加载配置失败:', error);
-    ElMessage.error('加载配置失败');
+    console.error('加载配置列表失败:', error);
   }
 };
+
+// 获取模型类型中文名称和颜色
+const getModelTypeInfo = (modelType) => {
+  const modelInfo = {
+    'qwen': { name: '通义千问', color: '#ff6b35', bgColor: '#fff2ed' },
+    'volcengine': { name: '字节跳动（火山引擎）', color: '#000000', bgColor: '#f5f5f5' },
+    'deepseek': { name: 'DeepSeek', color: '#6366f1', bgColor: '#eef2ff' },
+    'zhipu': { name: '智谱AI', color: '#059669', bgColor: '#ecfdf5' },
+    'openai': { name: 'OpenAI', color: '#10b981', bgColor: '#ecfdf5' },
+    'wenxin': { name: '百度文心一言', color: '#3b82f6', bgColor: '#eff6ff' },
+    'xunfei': { name: '讯飞星火', color: '#f59e0b', bgColor: '#fffbeb' },
+    'minimax': { name: 'MiniMax', color: '#8b5cf6', bgColor: '#f3f4f6' },
+    'moonshot': { name: '月之暗面', color: '#6366f1', bgColor: '#eef2ff' },
+    '360': { name: '360智脑', color: '#059669', bgColor: '#ecfdf5' },
+    'claude': { name: 'Claude (Anthropic)', color: '#dc2626', bgColor: '#fef2f2' },
+    'gemini': { name: 'Gemini (Google)', color: '#ea4335', bgColor: '#fef2f2' }
+  };
+  return modelInfo[modelType] || { name: modelType, color: '#6b7280', bgColor: '#f9fafb' };
+};
+
+// 格式化时间
+const formatTime = (timeStr) => {
+  if (!timeStr) return '';
+  const date = new Date(timeStr);
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+// 查看配置
+const viewConfig = async (config) => {
+  try {
+    console.log('查看配置:', config);
+    
+    const response = await fetch(`/api/ai_config/${config.id}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      viewConfigData.value = result.data;
+      viewDialogVisible.value = true;
+    } else {
+      ElMessage.error(result.message || '获取配置详情失败');
+    }
+  } catch (error) {
+    console.error('获取配置详情失败:', error);
+    ElMessage.error('获取配置详情失败');
+  }
+};
+
+// 编辑配置
+const editConfig = (config) => {
+  console.log('编辑配置:', config);
+  // 将选中的配置填充到表单中
+  configForm.configId = config.id; // 添加配置ID
+  configForm.configName = config.config_name;
+  configForm.modelType = config.model_type;
+  configForm.apiKey = config.api_key;
+  configForm.baseUrl = config.model_url;
+  configForm.modelVersion = config.model_version;
+  configForm.promptPrice = config.prompt_price_per_1k;
+  configForm.completionPrice = config.completion_price_per_1k;
+  
+  ElMessage.success('配置已加载到表单中，请修改后保存');
+};
+
+// 删除配置
+const deleteConfig = async (config) => {
+  try {
+    console.log('删除配置:', config);
+    
+    const response = await fetch(`/api/ai_config/${config.id}/delete`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      ElMessage.success(result.message);
+      // 刷新配置列表
+      await loadConfigList();
+    } else {
+      ElMessage.error(result.message);
+    }
+  } catch (error) {
+    console.error('删除配置失败:', error);
+    ElMessage.error('删除配置失败');
+  }
+};
+
+// 切换配置启用状态
+const toggleConfigEnabled = async (config, newValue) => {
+  try {
+    console.log('切换配置启用状态:', config, '新值:', newValue);
+    
+    // 如果要启用，先禁用所有其他配置
+    if (newValue) {
+      // 找到所有已启用的配置（除了当前配置）
+      const otherEnabledConfigs = configList.value.filter(c => c.is_enabled && c.id !== config.id);
+      
+      if (otherEnabledConfigs.length > 0) {
+        // 显示提示信息
+        ElMessage.info('正在切换配置，请稍候...');
+        
+        // 先禁用其他已启用的配置
+        for (const otherConfig of otherEnabledConfigs) {
+          try {
+            const disableResponse = await fetch(`/api/ai_config/${otherConfig.id}/toggle_enabled`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                enabled: false
+              })
+            });
+            
+            const disableResult = await disableResponse.json();
+            if (!disableResult.success) {
+              console.error('禁用其他配置失败:', disableResult.message);
+            }
+          } catch (error) {
+            console.error('禁用其他配置失败:', error);
+          }
+        }
+      }
+    }
+    
+    // 然后切换当前配置的状态
+    const response = await fetch(`/api/ai_config/${config.id}/toggle_enabled`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        enabled: newValue
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      ElMessage.success(result.message);
+      // 刷新配置列表以获取最新状态
+      await loadConfigList();
+    } else {
+      ElMessage.error(result.message);
+    }
+  } catch (error) {
+    console.error('切换启用状态失败:', error);
+    ElMessage.error('切换启用状态失败');
+  }
+};
+
+// 重置表单为默认状态
+const resetFormToDefault = () => {
+  configForm.configId = null;
+  configForm.configName = '';
+  configForm.modelType = 'qwen';
+  configForm.apiKey = '';
+  configForm.baseUrl = '';
+  configForm.modelVersion = '';
+  configForm.promptPrice = '';
+  configForm.completionPrice = '';
+};
+
+// 加载配置（暂时注释掉，后续从配置列表中选择时调用）
+// const loadConfig = async () => {
+//   try {
+//     const response = await fetch('/api/ai_config');
+//     const result = await response.json();
+//     
+//     if (result.success && result.data) {
+//       // 填充表单数据
+//       configForm.modelType = result.data.modelType || 'qwen';
+//       configForm.apiKey = result.data.apiKey || '';
+//       configForm.baseUrl = result.data.baseUrl || '';
+//       configForm.modelVersion = result.data.modelVersion || '';
+//       configForm.promptPrice = result.data.promptPrice || '0.001';
+//       configForm.completionPrice = result.data.completionPrice || '0.002';
+//     }
+//   } catch (error) {
+//     console.error('加载配置失败:', error);
+//     ElMessage.error('加载配置失败');
+//   }
+// };
 
 // 保存配置
 const saveConfig = async () => {
@@ -280,12 +633,18 @@ const saveConfig = async () => {
     await configFormRef.value.validate();
     saving.value = true;
     
-    const response = await fetch('/api/ai_config', {
-      method: 'POST',
+    const isEdit = configForm.configId !== null;
+    const url = isEdit ? `/api/ai_config/${configForm.configId}` : '/api/ai_config';
+    const method = isEdit ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method: method,
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        configId: configForm.configId,
+        configName: configForm.configName,
         modelType: configForm.modelType,
         apiKey: configForm.apiKey,
         baseUrl: configForm.baseUrl,
@@ -298,9 +657,27 @@ const saveConfig = async () => {
     const result = await response.json();
     
     if (result.success) {
-      ElMessage.success('配置保存成功！');
+      ElMessage.success(isEdit ? '配置更新成功！' : '配置保存成功！');
+      // 保存成功后清空表单
+      resetFormToDefault();
+      // 刷新配置列表
+      await loadConfigList();
+    } else {
+      // 显示具体的验证错误信息
+      if (result.errors) {
+        // 显示所有验证错误
+        const errorMessages = Object.values(result.errors);
+        if (errorMessages.length === 1) {
+          ElMessage.error(errorMessages[0]);
+        } else {
+          // 如果有多个错误，显示所有错误
+          const errorText = errorMessages.join('；');
+          ElMessage.error(`验证失败：${errorText}`);
+          console.error('所有验证错误:', result.errors);
+        }
     } else {
       ElMessage.error(result.message || '配置保存失败');
+      }
     }
   } catch (error) {
     console.error('配置保存失败:', error);
@@ -321,7 +698,7 @@ const resetConfig = () => {
       type: 'warning',
     }
   ).then(() => {
-    configFormRef.value.resetFields();
+    resetFormToDefault();
     ElMessage.success('配置已重置');
   }).catch(() => {
     // 用户取消
@@ -394,6 +771,378 @@ const resetConfig = () => {
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.config-layout {
+  display: flex;
+  gap: 30px;
+  height: 100%;
+}
+
+.config-left {
+  flex: 1;
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+}
+
+.config-right {
+  flex: 1;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.config-right {
+  flex: 1;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.config-list {
+  margin-top: 15px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.config-list {
+  margin-top: 15px;
+}
+
+.empty-list {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+  font-size: 14px;
+}
+
+.config-items {
+  height: calc(100vh - 300px);
+  overflow-y: auto;
+  /* 隐藏滚动条 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+/* 隐藏 Webkit 浏览器的滚动条 */
+.config-items::-webkit-scrollbar {
+  display: none;
+}
+
+.config-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #f1f5f9;
+  border-bottom: 2px solid #e2e8f0;
+  font-weight: 600;
+  color: #475569;
+  font-size: 13px;
+}
+
+.header-name {
+  flex: 0 0 150px;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  flex: 1;
+}
+
+.config-header .config-name {
+  font-weight: 600;
+  color: #475569;
+  font-size: 13px;
+  flex: 0 0 120px;
+  padding-right: 8px;
+}
+
+.header-model-type {
+  width: 140px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+}
+
+.header-model-version {
+  width: 90px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 8px;
+}
+
+.header-update-time {
+  width: 120px;
+  text-align: left;
+}
+
+.header-enabled {
+  width: 80px;
+  text-align: center;
+}
+
+.header-actions {
+  width: 140px;
+  text-align: left;
+}
+
+.config-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px solid #e2e8f0;
+  transition: background-color 0.3s ease;
+}
+
+.config-item:hover {
+  background-color: #f8fafc;
+}
+
+.config-item:last-child {
+  border-bottom: none;
+}
+
+.config-name {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 14px;
+  flex: 0 0 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 8px;
+}
+
+.config-info {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  flex: 1;
+}
+
+.model-type-container {
+  width: 140px;
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+}
+
+.model-type {
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  text-align: left;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.model-version {
+  color: #64748b;
+  white-space: nowrap;
+  width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 8px;
+}
+
+.config-time {
+  color: #94a3b8;
+  white-space: nowrap;
+  width: 120px;
+}
+
+.config-enabled {
+  width: 80px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.config-actions {
+  width: 140px;
+  display: flex;
+  gap: 6px;
+}
+
+/* 自定义按钮样式 */
+.action-btn {
+  font-weight: 500;
+}
+
+.view-btn {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+  color: white !important;
+}
+
+.view-btn:hover {
+  background-color: #059669 !important;
+  border-color: #059669 !important;
+}
+
+.edit-btn {
+  background-color: #409eff !important;
+  border-color: #409eff !important;
+  color: white !important;
+}
+
+.edit-btn:hover {
+  background-color: #337ecc !important;
+  border-color: #337ecc !important;
+}
+
+.delete-btn {
+  background-color: #dc2626 !important;
+  border-color: #dc2626 !important;
+  color: white !important;
+}
+
+.delete-btn:hover {
+  background-color: #b91c1c !important;
+  border-color: #b91c1c !important;
+}
+
+/* 气泡确认框样式优化 */
+:deep(.el-popconfirm) {
+  .el-popconfirm__main {
+    padding: 12px 16px;
+  }
+  
+  .el-popconfirm__title {
+    font-size: 14px;
+    color: #374151;
+    margin-bottom: 8px;
+  }
+  
+  .el-popconfirm__action {
+    margin-top: 12px;
+  }
+  
+  .el-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+/* 配置详情对话框样式 */
+.config-detail {
+  padding: 0;
+}
+
+.detail-section {
+  margin-bottom: 24px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section h4 {
+  margin-bottom: 16px;
+  color: #409eff;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.detail-section h4::before {
+  content: '';
+  width: 3px;
+  height: 16px;
+  background: #409eff;
+  margin-right: 8px;
+  border-radius: 2px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  line-height: 1.6;
+}
+
+.detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-item label {
+  width: 100px;
+  font-weight: 600;
+  color: #374151;
+  flex-shrink: 0;
+}
+
+.detail-item span {
+  color: #64748b;
+  word-break: break-all;
+}
+
+.detail-item .api-key {
+  font-family: 'Courier New', monospace;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.detail-item .url-text {
+  font-family: 'Courier New', monospace;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.detail-item .model-type-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-block;
+}
+
+.dialog-footer {
+  text-align: center;
+}
+
+/* 开关动画效果 */
+.animated-switch {
+  transition: all 0.3s ease;
+}
+
+:deep(.animated-switch .el-switch__core) {
+  transition: all 0.3s ease;
+}
+
+:deep(.animated-switch .el-switch__action) {
+  transition: all 0.3s ease;
+}
+
+:deep(.animated-switch.is-checked .el-switch__core) {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+
+:deep(.animated-switch:not(.is-checked) .el-switch__core) {
+  background-color: #d1d5db;
+  border-color: #d1d5db;
 }
 
 .form-section {
