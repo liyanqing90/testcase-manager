@@ -142,6 +142,11 @@ Thumbs.db
 backend/uploads/
 *.xlsx
 
+# AI test cases generated files
+backend/ai_test_cases/agent_results/
+backend/ai_test_cases/docs/
+backend/ai_test_cases/logs/
+
 # Node.js dependencies
 node_modules/
 
