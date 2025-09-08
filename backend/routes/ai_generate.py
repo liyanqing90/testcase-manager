@@ -15,6 +15,10 @@ sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__f
 
 ai_generate_bp = Blueprint('ai_generate', __name__)
 
+# 全局变量跟踪当前运行的进程
+current_process = None
+process_lock = None  # 用于线程安全
+
 # 配置上传目录
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ai_test_cases', 'docs')
 ALLOWED_EXTENSIONS = {'pdf', 'docx', 'md', 'txt'}
@@ -154,46 +158,62 @@ def generate_test_cases():
                 if not os.access(ai_main_path_abs, os.R_OK):
                     return jsonify({'error': f'AI主程序文件无读取权限: {ai_main_path_abs}'}), 500
 
-            result = subprocess.run(
+            # 使用Popen启动进程，以便可以终止
+            global current_process
+            current_process = subprocess.Popen(
                 cmd_args,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
                 encoding='utf-8',  # 明确指定UTF-8编码
                 errors='replace',  # 遇到无法解码的字符时替换为占位符
                 shell=False,  # 不使用shell，直接传递参数列表
                 cwd=os.path.dirname(UPLOAD_FOLDER),  # 设置工作目录
-                timeout=1800  # 30分钟超时，因为AI系统需要很长时间处理多层过滤
             )
 
-            if result.returncode == 0:
-                # 检查输出文件是否存在
-                if os.path.exists(output_path):
-                    return jsonify({
-                        'success': True,
-                        'message': '测试用例生成成功',
-                        'output_file': output_filename,
-                        'output_path': output_path
-                    })
+            try:
+                # 等待进程完成，设置超时
+                stdout, stderr = current_process.communicate(timeout=1800)  # 30分钟超时
+                
+                if current_process.returncode == 0:
+                    # 检查输出文件是否存在
+                    if os.path.exists(output_path):
+                        return jsonify({
+                            'success': True,
+                            'message': '测试用例生成成功',
+                            'output_file': output_filename,
+                            'output_path': output_path
+                        })
+                    else:
+                        return jsonify({
+                            'success': False,
+                            'error': '生成成功但输出文件未找到',
+                            'stdout': stdout,
+                            'stderr': stderr
+                        }), 500
                 else:
                     return jsonify({
                         'success': False,
-                        'error': '生成成功但输出文件未找到',
-                        'stdout': result.stdout,
-                        'stderr': result.stderr
+                        'error': '测试用例生成失败',
+                        'stdout': stdout,
+                        'stderr': stderr,
+                        'returncode': current_process.returncode,
+                        'platform': os.name,
+                        'command': ' '.join(cmd_args)
                     }), 500
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': '测试用例生成失败',
-                    'stdout': result.stdout,
-                    'stderr': result.stderr,
-                    'returncode': result.returncode,
-                    'platform': os.name,
-                    'command': ' '.join(cmd_args)
-                }), 500
-
-        except subprocess.TimeoutExpired:
-            return jsonify({'error': '生成超时（30分钟），AI系统需要更长时间处理复杂的多层过滤逻辑，请稍后重试'}), 408
+                    
+            except subprocess.TimeoutExpired:
+                # 超时时终止进程
+                if current_process:
+                    current_process.terminate()
+                    try:
+                        current_process.wait(timeout=10)  # 等待进程终止
+                    except subprocess.TimeoutExpired:
+                        current_process.kill()  # 强制杀死进程
+                current_process = None
+                return jsonify({'error': '生成超时（30分钟），AI系统需要更长时间处理复杂的多层过滤逻辑，请稍后重试'}), 408
+            finally:
+                current_process = None
         except FileNotFoundError as e:
             return jsonify({'error': f'文件未找到: {str(e)}', 'platform': os.name, 'command': ' '.join(cmd_args)}), 500
         except PermissionError as e:
@@ -253,6 +273,91 @@ def delete_file(filename):
         return jsonify({'error': '没有权限删除文件'}), 403
     except Exception as e:
         return jsonify({'error': f'删除失败: {str(e)}'}), 500
+
+
+@ai_generate_bp.route('/stop', methods=['POST'])
+def stop_generation():
+    """终止当前的测试用例生成进程"""
+    try:
+        global current_process
+        
+        if current_process is None:
+            return jsonify({
+                'success': True,
+                'message': '当前没有正在运行的生成任务'
+            })
+        
+        # 检查进程是否还在运行
+        if current_process.poll() is None:
+            # 进程还在运行，尝试终止
+            current_process.terminate()
+            
+            try:
+                # 等待进程优雅终止（最多等待10秒）
+                current_process.wait(timeout=10)
+                message = '生成任务已成功终止'
+            except subprocess.TimeoutExpired:
+                # 如果优雅终止失败，强制杀死进程
+                current_process.kill()
+                current_process.wait()
+                message = '生成任务已被强制终止'
+        else:
+            # 进程已经结束
+            message = '生成任务已经结束'
+        
+        # 清理进程引用
+        current_process = None
+        
+        return jsonify({
+            'success': True,
+            'message': message
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'终止生成失败: {str(e)}'
+        }), 500
+
+
+@ai_generate_bp.route('/status', methods=['GET'])
+def get_generation_status():
+    """获取当前生成任务的状态"""
+    try:
+        global current_process
+        
+        if current_process is None:
+            return jsonify({
+                'success': True,
+                'status': 'idle',
+                'message': '当前没有正在运行的生成任务'
+            })
+        
+        # 检查进程状态
+        poll_result = current_process.poll()
+        
+        if poll_result is None:
+            # 进程正在运行
+            return jsonify({
+                'success': True,
+                'status': 'running',
+                'message': '生成任务正在运行中',
+                'pid': current_process.pid
+            })
+        else:
+            # 进程已经结束
+            return jsonify({
+                'success': True,
+                'status': 'completed',
+                'message': f'生成任务已完成，返回码: {poll_result}',
+                'returncode': poll_result
+            })
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'获取状态失败: {str(e)}'
+        }), 500
 
 
 @ai_generate_bp.route('/files', methods=['GET'])

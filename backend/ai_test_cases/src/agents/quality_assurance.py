@@ -27,6 +27,11 @@ class QualityAssuranceAgent:
             
         self.config_list = [ai_config]
         
+        # 记录使用的AI模型信息
+        model_info = ai_config.get('model', 'unknown')
+        base_url = ai_config.get('base_url', 'unknown')
+        logger.info(f"质量保证代理初始化 - 使用模型: {model_info}, 接口地址: {base_url}, 并发数: {concurrent_workers}")
+        
         # 设置并发工作线程数
         self.concurrent_workers = max(1, concurrent_workers)  # 确保至少为1
         logger.info(f"质量保证代理初始化，并发工作线程数: {self.concurrent_workers}")

@@ -56,9 +56,10 @@ class AIConfigService:
                 self._cached_config = config
                 self._cache_timestamp = time.time()
                 logger.info("成功从数据库加载AI配置")
+                logger.info(f"配置详情 - 模型类型: {config.get('model_type', 'unknown')}, 模型版本: {config.get('model_version', 'unknown')}, 接口地址: {config.get('base_url', 'unknown')}")
                 return config
             else:
-                logger.warning("数据库中没有找到AI配置")
+                logger.warning("数据库中没有找到启用的AI配置")
                 return None
                 
         except Exception as e:
@@ -72,11 +73,12 @@ class AIConfigService:
             conn = mysql.connector.connect(**self.config)
             cursor = conn.cursor(dictionary=True)
             
-            # 查询最新的AI配置
+            # 查询启用的AI配置
             query = """
                 SELECT model_type, api_key, model_url, model_version, 
                        prompt_price_per_1k, completion_price_per_1k
                 FROM ai_configs 
+                WHERE is_enabled = 1
                 ORDER BY updated_at DESC 
                 LIMIT 1
             """

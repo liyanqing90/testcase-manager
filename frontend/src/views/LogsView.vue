@@ -175,6 +175,15 @@
               </div>
               <div class="clear-button-card">
                 <el-button 
+                  type="warning" 
+                  size="small" 
+                  @click="handleStopGeneration"
+                  :icon="VideoPause"
+                  class="stop-button"
+                >
+                  终止生成
+                </el-button>
+                <el-button 
                   type="danger" 
                   size="small" 
                   @click="handleClearLogs"
@@ -270,7 +279,8 @@ import {
   Delete,
   ArrowDown,
   ArrowUp,
-  Loading
+  Loading,
+  VideoPause
 } from '@element-plus/icons-vue'
 
 // 筛选表单数据
@@ -581,6 +591,38 @@ const handleClearLogs = async () => {
   }
 }
 
+// 终止生成
+const handleStopGeneration = async () => {
+  try {
+    const confirmed = await ElMessageBox.confirm(
+      '确定要终止当前的AI测试用例生成吗？此操作将停止正在进行的生成任务。',
+      '确认终止',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    if (confirmed) {
+      const response = await fetch('/ai_generate/stop', {
+        method: 'POST'
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        ElMessage.success(data.message || '已发送终止信号')
+      } else {
+        ElMessage.error(data.error || '终止生成失败')
+      }
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('终止生成失败')
+    }
+  }
+}
+
 // 页面加载时启动真实日志监控
 onMounted(async () => {
   await loadInitialLogs()
@@ -881,21 +923,13 @@ onUnmounted(() => {
 }
 
 .clear-button-card {
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-  border-radius: 6px;
-  padding: 2px;
-  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-  border: 1px solid #ff6b6b;
-  transition: all 0.3s ease;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
-.clear-button-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
-}
-
-.clear-button-card .clear-button {
-  background: transparent;
+.clear-button-card .stop-button {
+  background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%);
   border: none;
   color: white;
   font-weight: 500;
@@ -905,11 +939,37 @@ onUnmounted(() => {
   padding: 4px 8px;
   border-radius: 4px;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(255, 167, 38, 0.3);
+}
+
+.clear-button-card .stop-button:hover {
+  background: linear-gradient(135deg, #ffb74d 0%, #ffa726 100%);
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(255, 167, 38, 0.4);
+}
+
+.clear-button-card .stop-button:active {
+  transform: scale(0.98);
+}
+
+.clear-button-card .clear-button {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  border: none;
+  color: white;
+  font-weight: 500;
+  font-family: 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
 }
 
 .clear-button-card .clear-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, #ff8a80 0%, #ff6b6b 100%);
   transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
 }
 
 .clear-button-card .clear-button:active {

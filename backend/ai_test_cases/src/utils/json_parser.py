@@ -87,6 +87,22 @@ class UnifiedJSONParser:
                 result = strategy(response)
                 if result and isinstance(result, dict):
                     logger.info(f"[{context}] 使用策略 {i+1} 成功解析JSON")
+                    # 添加调试信息，检查解析结果的内容
+                    if context == "requirement_analysis":
+                        logger.info(f"[{context}] 解析结果检查 - functional_requirements: {len(result.get('functional_requirements', []))} 项")
+                        logger.info(f"[{context}] 解析结果检查 - non_functional_requirements: {len(result.get('non_functional_requirements', []))} 项")
+                        logger.info(f"[{context}] 解析结果检查 - test_scenarios: {len(result.get('test_scenarios', []))} 项")
+                    elif context == "test_case_generation":
+                        test_cases = result.get('test_cases', [])
+                        logger.info(f"[{context}] 解析结果检查 - test_cases: {len(test_cases)} 项")
+                        if test_cases:
+                            logger.info(f"[{context}] 第一个测试用例ID: {test_cases[0].get('id', 'unknown')}")
+                            logger.info(f"[{context}] 第一个测试用例标题: {test_cases[0].get('title', 'unknown')}")
+                            logger.info(f"[{context}] 第一个测试用例必需字段检查:")
+                            required_fields = ["id", "title", "description", "preconditions", "steps", "expected_results", "priority", "category"]
+                            for field in required_fields:
+                                value = test_cases[0].get(field)
+                                logger.info(f"[{context}]   {field}: {'存在' if value else '缺失'} - {str(value)[:50] if value else 'None'}")
                     return result
             except Exception as e:
                 last_error = str(e)
@@ -489,27 +505,52 @@ class UnifiedJSONParser:
             
             json_str = json_match.group(1)
             
-            # 1. 修复缺失的逗号
-            json_str = re.sub(r'(\w+)\s*(\w+)\s*:', r'\1",\2":', json_str)
+            # 对于需求分析场景，使用更保守的修复策略
+            if '"functional_requirements"' in json_str or '"non_functional_requirements"' in json_str:
+                # 1. 只修复基本的JSON格式问题
+                json_str = re.sub(r'(\w+)\s*(\w+)\s*:', r'\1",\2":', json_str)
+                
+                # 2. 修复缺失的逗号（但不过度修复数组内容）
+                json_str = self._fix_comma_delimiters(json_str)
+                
+                # 3. 尝试直接解析
+                try:
+                    return json.loads(json_str)
+                except json.JSONDecodeError:
+                    pass
+                
+                # 4. 如果失败，尝试使用ast.literal_eval
+                try:
+                    parsed = literal_eval(json_str)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except (ValueError, SyntaxError):
+                    pass
+            else:
+                # 对于其他场景，使用原有的激进修复策略
+                # 1. 修复缺失的逗号
+                json_str = re.sub(r'(\w+)\s*(\w+)\s*:', r'\1",\2":', json_str)
+                
+                # 2. 修复不完整的字符串
+                json_str = re.sub(r':\s*([^",\s]+)(?=\s*[,}])', r': "\1"', json_str)
+                
+                # 3. 修复数组格式
+                json_str = re.sub(r'\[\s*([^,\]]+)\s*\]', r'["\1"]', json_str)
+                
+                # 4. 修复逗号分隔符错误
+                json_str = self._fix_comma_delimiters(json_str)
+                
+                # 5. 尝试使用ast.literal_eval作为备用方案
+                try:
+                    parsed = literal_eval(json_str)
+                    if isinstance(parsed, dict):
+                        return parsed
+                except (ValueError, SyntaxError):
+                    pass
+                
+                return json.loads(json_str)
             
-            # 2. 修复不完整的字符串
-            json_str = re.sub(r':\s*([^",\s]+)(?=\s*[,}])', r': "\1"', json_str)
-            
-            # 3. 修复数组格式
-            json_str = re.sub(r'\[\s*([^,\]]+)\s*\]', r'["\1"]', json_str)
-            
-            # 4. 修复逗号分隔符错误
-            json_str = self._fix_comma_delimiters(json_str)
-            
-            # 5. 尝试使用ast.literal_eval作为备用方案
-            try:
-                parsed = literal_eval(json_str)
-                if isinstance(parsed, dict):
-                    return parsed
-            except (ValueError, SyntaxError):
-                pass
-            
-            return json.loads(json_str)
+            return None
         except (json.JSONDecodeError, ValueError):
             return None
     

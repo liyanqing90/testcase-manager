@@ -61,13 +61,16 @@ CREATE TABLE `ai_test_generation_history` (
 -- 创建AI配置表
 CREATE TABLE IF NOT EXISTS `ai_configs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `config_name` varchar(100) NOT NULL COMMENT '配置名称',
   `model_type` varchar(50) NOT NULL COMMENT 'AI模型类型',
   `api_key` text NOT NULL COMMENT 'AI模型API密钥',
   `model_url` text NOT NULL COMMENT 'AI模型URL地址',
   `model_version` varchar(100) NOT NULL COMMENT 'AI模型版本',
   `prompt_price_per_1k` DECIMAL(10,6) DEFAULT 0.001 COMMENT '每1000个prompt token的价格',
   `completion_price_per_1k` DECIMAL(10,6) DEFAULT 0.002 COMMENT '每1000个completion token的价格',
+  `is_enabled` tinyint(1) DEFAULT 0 COMMENT '启用状态：1-启用，0-禁用',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_config_name` (`config_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
